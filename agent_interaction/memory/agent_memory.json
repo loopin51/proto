@@ -1,0 +1,14 @@
+{
+    "agents": [
+        {
+            "name": "John",
+            "persona": "Friendly pharmacist who likes helping others.",
+            "memory_stream": []
+        },
+        {
+            "name": "Maria",
+            "persona": "Artist who enjoys painting and nature.",
+            "memory_stream": []
+        }
+    ]
+}

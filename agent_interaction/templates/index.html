@@ -1,0 +1,24 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/style.css">
+    <title>Agent Conversation</title>
+</head>
+<body>
+    <h1>Agent Interaction</h1>
+    <form action="/conversation" method="POST">
+        <label for="message">Your Message to John:</label>
+        <input type="text" id="message" name="message" required>
+        <button type="submit">Send</button>
+    </form>
+    {% if user_message %}
+    <div class="conversation">
+        <p><strong>You:</strong> {{ user_message }}</p>
+        <p><strong>Maria:</strong> {{ agent_response }}</p>
+    </div>
+    {% endif %}
+</body>
+</html>

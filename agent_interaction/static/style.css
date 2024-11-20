@@ -1,0 +1,21 @@
+/* static/style.css */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    margin: 2em;
+}
+
+h1 {
+    color: #333;
+}
+
+form {
+    margin-bottom: 1em;
+}
+
+.conversation {
+    background-color: #fff;
+    padding: 1em;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
