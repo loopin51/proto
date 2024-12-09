@@ -47,16 +47,28 @@ def index():
 @app.route('/conversation', methods=['POST'])
 def conversation():
     user_message = request.form['message']
-    response = agent_conversation(agent1, agent2, user_message)
-    # 사용자와 에이전트 간의 대화를 기록에 추가
-    conversation_history.append({"speaker": "You", "message": user_message})
-    conversation_history.append({"speaker": "Maria", "message": response})
-    return render_template('index.html', conversation_history=conversation_history)
+    try:
+        response = agent_conversation(agent1, agent2, user_message)
+        # 웹페이지에 최신 대화 상태를 동적으로 반영
+        return render_template('index.html', conversation_history=conversation_history)
+    except RuntimeError as e:
+        # 오류 메시지 출력
+        return render_template('index.html', conversation_history=conversation_history, error=str(e))
 
 @app.route('/reflect', methods=['GET'])
 def reflect():
     reflection = agent1.reflect()  # 에이전트 1의 회상
     return render_template('reflection.html', reflection=reflection)
+
+def save_message_to_db(speaker, message):
+    conn = sqlite3.connect(database_path)
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO conversations (speaker, message) VALUES (?, ?)
+    ''', (speaker, message))
+    conn.commit()
+    conn.close()
+
 
 def agent_conversation(agent1, agent2, message):
     memory_context = agent2.get_memory_context()
@@ -67,51 +79,56 @@ def agent_conversation(agent1, agent2, message):
         f"{reflection}\n"
         f"How should {agent2.name} respond?"
     )
-    return query_llm(prompt)
+    try:
+        response = query_llm(prompt)
+        # 성공적으로 생성된 메시지를 DB에 저장
+        save_message_to_db(agent1.name, message)
+        save_message_to_db(agent2.name, response)
+        return response
+    except RuntimeError as e:
+        # 오류 메시지를 DB에 저장
+        save_message_to_db("Error", str(e))
+        raise e
 
 # 자동 대화 함수
 def automated_conversation(agent1, agent2, num_turns=100):
     current_message = "Hello!"
     for i in range(num_turns):
-        # Agent 1 -> Agent 2
-        response = agent_conversation(agent1, agent2, current_message)
-        conversation_history.append({"speaker": agent1.name, "message": current_message})
-        conversation_history.append({"speaker": agent2.name, "message": response})
-        agent1.add_memory({"event": f"Said to {agent2.name}: {current_message}", "importance": 5})
-        agent2.add_memory({"event": f"Responded to {agent1.name}: {response}", "importance": 5})
-        
-        # Update the current message for next turn
-        current_message = response
+        try:
+            # Agent 1 -> Agent 2
+            response = agent_conversation(agent1, agent2, current_message)
+            # DB 및 conversation_history 업데이트
+            save_message_to_db(agent1.name, current_message)
+            save_message_to_db(agent2.name, response)
+            conversation_history.append({"speaker": agent1.name, "message": current_message})
+            conversation_history.append({"speaker": agent2.name, "message": response})
 
-        # Agent 2 -> Agent 1
-        response = agent_conversation(agent2, agent1, current_message)
-        conversation_history.append({"speaker": agent2.name, "message": current_message})
-        conversation_history.append({"speaker": agent1.name, "message": response})
-        agent2.add_memory({"event": f"Said to {agent1.name}: {current_message}", "importance": 5})
-        agent1.add_memory({"event": f"Responded to {agent2.name}: {response}", "importance": 5})
-        
-        # Update the current message for next turn
-        current_message = response
+            # Update the current message for next turn
+            current_message = response
 
-    # 대화 완료 후 대화 내용을 데이터베이스에 저장
-    save_conversation_to_db()
+            # Agent 2 -> Agent 1
+            response = agent_conversation(agent2, agent1, current_message)
+            # DB 및 conversation_history 업데이트
+            save_message_to_db(agent2.name, current_message)
+            save_message_to_db(agent1.name, response)
+            conversation_history.append({"speaker": agent2.name, "message": current_message})
+            conversation_history.append({"speaker": agent1.name, "message": response})
 
-def save_conversation_to_db():
-    conn = sqlite3.connect(database_path)
-    cursor = conn.cursor()
-    for entry in conversation_history:
-        cursor.execute('''
-            INSERT INTO conversations (speaker, message) VALUES (?, ?)
-        ''', (entry['speaker'], entry['message']))
-    conn.commit()
-    conn.close()
+            # Update the current message for next turn
+            current_message = response
+        except RuntimeError as e:
+            # 오류 발생 시 DB에 저장
+            save_message_to_db("Error", str(e))
+            print(f"Error during automated conversation: {e}")
+            break
+
 
 if __name__ == '__main__':
     # 데이터베이스 초기화
     init_db()
 
     # 자동 대화 실행 (플라스크 앱 실행 전에 실행)
-    automated_conversation(agent1, agent2, num_turns=100)
+    automated_conversation(agent1, agent2, num_turns=10)
     
     # Flask 앱 실행
     app.run(debug=True)

@@ -18,6 +18,8 @@ def query_llm(prompt):
         if 'choices' in response_data and len(response_data['choices']) > 0:
             return response_data['choices'][0]['message']['content']
         else:
-            return "Error: Unexpected response format from LLM"
+            raise ValueError("Unexpected response format from LLM")
     except requests.exceptions.RequestException as e:
-        return f"Error: Unable to connect to LLM - {e}"
+        raise RuntimeError(f"Error: Unable to connect to LLM - {e}")
+    except ValueError as ve:
+        raise RuntimeError(f"Error: LLM returned invalid response - {ve}")
