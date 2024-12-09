@@ -4,6 +4,7 @@ from datetime import datetime
 from flask import Flask, render_template, request
 from agents.agent import Agent
 from utils.llm_connector import query_llm
+from flask import jsonify
 
 
 app = Flask(__name__)
@@ -60,6 +61,29 @@ def conversation():
 def reflect():
     reflection = agent1.reflect()  # 에이전트 1의 회상
     return render_template('reflection.html', reflection=reflection)
+
+@app.route('/get_conversation', methods=['GET'])
+def get_conversation():
+    """
+    Fetch conversation history from the database.
+    """
+    conn = sqlite3.connect(database_path)
+    cursor = conn.cursor()
+    cursor.execute('SELECT turn, speaker, message FROM conversations ORDER BY turn ASC')
+    rows = cursor.fetchall()
+    conn.close()
+
+    # Format data as JSON
+    conversation = [{"turn": row[0], "speaker": row[1], "message": row[2]} for row in rows]
+    return jsonify(conversation)
+
+@app.route('/get_reflection', methods=['GET'])
+def get_reflection():
+    """
+    Fetch the agent's reflection based on their memory.
+    """
+    reflection = agent1.reflect()  # Example: Agent 1's reflection
+    return jsonify({"reflection": reflection})
 
 def save_message_to_db(turn, speaker, message):
     conn = sqlite3.connect(database_path)

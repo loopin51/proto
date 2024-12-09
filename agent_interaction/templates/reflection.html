@@ -1,4 +1,3 @@
-<!-- templates/reflection.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,7 +8,27 @@
 </head>
 <body>
     <h1>Agent Reflection</h1>
-    <p>{{ reflection }}</p>
-    <a href="/">Go Back</a>
+    <div class="reflection">
+        <!-- 회상 내용이 여기에 표시됩니다 -->
+    </div>
+
+    <a href="/" class="btn">Go Back</a>
+
+    <script>
+        // 실시간으로 회상 데이터를 가져와 DOM 업데이트
+        function fetchReflection() {
+            fetch('/get_reflection')
+                .then(response => response.json())
+                .then(data => {
+                    const reflectionDiv = document.querySelector('.reflection');
+                    reflectionDiv.innerHTML = `<p>${data.reflection}</p>`;
+                })
+                .catch(error => console.error('Error fetching reflection:', error));
+        }
+
+        // 주기적으로 회상 내용을 갱신 (5초 간격)
+        setInterval(fetchReflection, 5000);
+        fetchReflection(); // 페이지 로드 시 초기 호출
+    </script>
 </body>
 </html>

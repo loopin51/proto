@@ -1,21 +1,30 @@
-/* static/style.css */
 body {
     font-family: Arial, sans-serif;
-    background-color: #f0f0f0;
-    margin: 2em;
+    margin: 20px;
 }
 
-h1 {
-    color: #333;
+.conversation, .reflection {
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-top: 20px;
+    height: 300px;
+    overflow-y: auto;
 }
 
-form {
-    margin-bottom: 1em;
+.conversation p, .reflection p {
+    margin: 5px 0;
 }
 
-.conversation {
-    background-color: #fff;
-    padding: 1em;
+.btn {
+    display: inline-block;
+    padding: 10px 20px;
+    margin-top: 20px;
+    background-color: #007BFF;
+    color: white;
+    text-decoration: none;
     border-radius: 5px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.btn:hover {
+    background-color: #0056b3;
 }

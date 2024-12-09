@@ -15,10 +15,31 @@
     </form>
 
     <div class="conversation">
-        {% for entry in conversation_history %}
-            <p><strong>{{ entry.speaker }}:</strong> {{ entry.message }}</p>
-        {% endfor %}
+        <!-- 대화 내용이 여기에 표시됩니다 -->
     </div>
+
     <a href="/reflect" class="btn">View Reflection</a>
+
+    <script>
+        // 실시간으로 대화 데이터를 가져와 DOM 업데이트
+        function fetchConversation() {
+            fetch('/get_conversation')
+                .then(response => response.json())
+                .then(data => {
+                    const conversationDiv = document.querySelector('.conversation');
+                    conversationDiv.innerHTML = ''; // 기존 내용을 지움
+                    data.forEach(entry => {
+                        const p = document.createElement('p');
+                        p.innerHTML = `<strong>${entry.speaker}:</strong> ${entry.message}`;
+                        conversationDiv.appendChild(p);
+                    });
+                })
+                .catch(error => console.error('Error fetching conversation:', error));
+        }
+
+        // 주기적으로 대화 내용을 갱신 (3초 간격)
+        setInterval(fetchConversation, 3000);
+        fetchConversation(); // 페이지 로드 시 초기 호출
+    </script>
 </body>
 </html>
