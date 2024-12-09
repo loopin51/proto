@@ -14,7 +14,7 @@ agent2 = Agent("Maria", "Artist who enjoys painting and nature.")
 
 # 대화 기록 저장 리스트
 conversation_history = []
-
+conversation_turn = 1
 
 # 현재 대화 시작 시각 기반 데이터베이스 파일 경로 생성
 def get_database_path():
@@ -33,6 +33,7 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS conversations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            turn INTEGER,
             speaker TEXT,
             message TEXT
         )
@@ -60,17 +61,18 @@ def reflect():
     reflection = agent1.reflect()  # 에이전트 1의 회상
     return render_template('reflection.html', reflection=reflection)
 
-def save_message_to_db(speaker, message):
+def save_message_to_db(turn, speaker, message):
     conn = sqlite3.connect(database_path)
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO conversations (speaker, message) VALUES (?, ?)
-    ''', (speaker, message))
+        INSERT INTO conversations (turn, speaker, message) VALUES (?, ?, ?)
+    ''', (turn, speaker, message))
     conn.commit()
     conn.close()
 
 
 def agent_conversation(agent1, agent2, message):
+    global conversation_turn  # 전역 변수 사용
     memory_context = agent2.get_memory_context()
     reflection = agent2.reflect()
     prompt = (
@@ -81,44 +83,29 @@ def agent_conversation(agent1, agent2, message):
     )
     try:
         response = query_llm(prompt)
-        # 성공적으로 생성된 메시지를 DB에 저장
-        save_message_to_db(agent1.name, message)
-        save_message_to_db(agent2.name, response)
+        # 메시지를 DB에 저장
+        save_message_to_db(conversation_turn, agent1.name, message)
+        conversation_turn += 1
+        save_message_to_db(conversation_turn, agent2.name, response)
+        conversation_turn += 1
         return response
     except RuntimeError as e:
-        # 오류 메시지를 DB에 저장
-        save_message_to_db("Error", str(e))
+        # 오류 발생 시 메시지와 대화 순서를 저장
+        save_message_to_db(conversation_turn, "Error", str(e))
+        conversation_turn += 1
         raise e
 
 # 자동 대화 함수
-def automated_conversation(agent1, agent2, num_turns=100):
-    current_message = "Hello!"
-    for i in range(num_turns):
+def automated_conversation(agent1, agent2, num_turns=10):
+    current_message = "Hello!" # Starting message
+    for _ in range(num_turns):
         try:
             # Agent 1 -> Agent 2
             response = agent_conversation(agent1, agent2, current_message)
-            # DB 및 conversation_history 업데이트
-            save_message_to_db(agent1.name, current_message)
-            save_message_to_db(agent2.name, response)
-            conversation_history.append({"speaker": agent1.name, "message": current_message})
-            conversation_history.append({"speaker": agent2.name, "message": response})
-
-            # Update the current message for next turn
+            # Update the current message for the next turn
             current_message = response
 
-            # Agent 2 -> Agent 1
-            response = agent_conversation(agent2, agent1, current_message)
-            # DB 및 conversation_history 업데이트
-            save_message_to_db(agent2.name, current_message)
-            save_message_to_db(agent1.name, response)
-            conversation_history.append({"speaker": agent2.name, "message": current_message})
-            conversation_history.append({"speaker": agent1.name, "message": response})
-
-            # Update the current message for next turn
-            current_message = response
         except RuntimeError as e:
-            # 오류 발생 시 DB에 저장
-            save_message_to_db("Error", str(e))
             print(f"Error during automated conversation: {e}")
             break
 
