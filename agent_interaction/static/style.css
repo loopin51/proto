@@ -12,7 +12,28 @@ body {
 }
 
 .conversation p, .reflection p {
-    margin: 5px 0;
+    padding: 10px;
+    border-radius: 10px;
+    margin: 5px;
+    width: fit-content;
+}
+
+.conversation p.user-message {
+    background-color: #007BFF;
+    color: white;
+    align-self: flex-start;
+}
+
+.conversation p.agent-message {
+    background-color: #e6e6e6;
+    align-self: flex-end;
+}
+
+.memory {
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-top: 20px;
+    white-space: pre-wrap;
 }
 
 .btn {

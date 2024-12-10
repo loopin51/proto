@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/static/style.css">
-    <title>Agent Conversation</title>
+    <title>Agent Interaction</title>
 </head>
 <body>
     <h1>Agent Interaction</h1>
-    <form action="/conversation" method="POST">
+    <form id="message-form">
         <label for="message">Your Message to John:</label>
         <input type="text" id="message" name="message" required>
         <button type="submit">Send</button>
@@ -19,17 +19,18 @@
     </div>
 
     <a href="/reflect" class="btn">View Reflection</a>
+    <a href="/memory" class="btn">View Memory</a>
 
     <script>
-        // 실시간으로 대화 데이터를 가져와 DOM 업데이트
         function fetchConversation() {
             fetch('/get_conversation')
                 .then(response => response.json())
                 .then(data => {
                     const conversationDiv = document.querySelector('.conversation');
-                    conversationDiv.innerHTML = ''; // 기존 내용을 지움
+                    conversationDiv.innerHTML = '';
                     data.forEach(entry => {
                         const p = document.createElement('p');
+                        p.className = entry.speaker === 'You' ? 'user-message' : 'agent-message';
                         p.innerHTML = `<strong>${entry.speaker}:</strong> ${entry.message}`;
                         conversationDiv.appendChild(p);
                     });
@@ -37,9 +38,28 @@
                 .catch(error => console.error('Error fetching conversation:', error));
         }
 
-        // 주기적으로 대화 내용을 갱신 (3초 간격)
+        document.getElementById('message-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const messageInput = document.getElementById('message');
+            const message = messageInput.value;
+
+            fetch('/conversation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `message=${message}`,
+            })
+                .then(response => response.json())
+                .then(() => {
+                    messageInput.value = '';
+                    fetchConversation();
+                })
+                .catch(error => console.error('Error sending message:', error));
+        });
+
         setInterval(fetchConversation, 3000);
-        fetchConversation(); // 페이지 로드 시 초기 호출
+        fetchConversation();
     </script>
 </body>
 </html>

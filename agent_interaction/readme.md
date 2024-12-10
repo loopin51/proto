@@ -19,10 +19,17 @@ agent_interaction_project/
 |   |-- style.css
 |-- templates/
 |   |-- index.html
+|   |-- reflection.html
+|   |-- memory.html
 |-- utils/
 |   |-- llm_connector.py
 |-- memory/
 |   |-- agent_memory.json
+|-- database/
+|-- tests/
+|   |-- test_conversation.py
+|   |-- test_memory.py
+|   |-- test_endpoints.py
 |-- README.md
 ```
 
