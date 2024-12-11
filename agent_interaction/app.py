@@ -5,6 +5,7 @@ from flask import Flask, render_template, request, jsonify
 from threading import Thread
 from agents.agent import Agent
 from utils.llm_connector import query_llm
+import re
 
 app = Flask(__name__)
 
@@ -88,27 +89,80 @@ def save_message_to_db(turn, speaker, message):
     conn.commit()
     conn.close()
 
+def parse_llm_response(content):
+    """
+    Parse the LLM's response to extract thought process and speech.
+    """
+    # Extract thought process
+    thought_process_match = re.search(r"Thought process:\s*(.+?)\n\n", content, re.DOTALL)
+    thought_process = thought_process_match.group(1).strip() if thought_process_match else "No thought process provided."
+
+    # Extract speech
+    speech_match = re.search(r"Speech:\s*(.+)", content, re.DOTALL)
+    speech = speech_match.group(1).strip() if speech_match else "No speech provided."
+
+    return speech, thought_process
+
+def save_thought_process_to_db(agent_name, thought_process):
+    """
+    Save the agent's thought process to a separate database table.
+    """
+    conn = sqlite3.connect(database_path, check_same_thread=False)
+    cursor = conn.cursor()
+
+    # 추론 내용을 저장하는 테이블 생성
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS thought_processes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            agent_name TEXT,
+            thought_process TEXT
+        )
+    ''')
+    conn.commit()
+
+    # 데이터 저장
+    cursor.execute('''
+        INSERT INTO thought_processes (agent_name, thought_process) VALUES (?, ?)
+    ''', (agent_name, thought_process))
+    conn.commit()
+    conn.close()
+
+
 def agent_conversation(agent1, agent2, message):
-    global conversation_turn
+    global conversation_turn  # 전역 변수 사용
     memory_context = agent2.get_memory_context()
     reflection = agent2.reflect()
     prompt = (
         f"{agent1.name} (Persona: {agent1.persona}) says to {agent2.name}: '{message}'\n"
-        f"{memory_context}\n"
-        f"{reflection}\n"
-        f"How should {agent2.name} respond?"
+        f"Memory Context:\n{memory_context}\n"
+        f"Reflection:\n{reflection}\n\n"
+        f"Please respond to this message in the following format:\n"
+        f"Thought process:\n[Provide your reasoning here, including any considerations from memory and reflection.]\n\n"
+        f"Speech:\n[Provide the exact words the agent will say in the conversation.]"
     )
     try:
-        response = query_llm(prompt)
+        # LLM에게 프롬프트 전송 및 응답 수신
+        llm_response = query_llm(prompt)
+        content = llm_response["choices"][0]["message"]["content"]
+
+        # Parse the response to extract speech and thought process
+        speech, thought_process = parse_llm_response(content)
+
+        # 대화 기록에 에이전트가 실제로 말한 내용만 저장
         save_message_to_db(conversation_turn, agent1.name, message)
         conversation_turn += 1
-        save_message_to_db(conversation_turn, agent2.name, response)
+        save_message_to_db(conversation_turn, agent2.name, speech)
         conversation_turn += 1
-        return response
+
+        # 에이전트의 추론 과정은 별도로 저장
+        save_thought_process_to_db(agent2.name, thought_process)
+
+        return speech
     except RuntimeError as e:
         save_message_to_db(conversation_turn, "Error", str(e))
         conversation_turn += 1
         raise e
+
 
 def automated_conversation(agent1, agent2, num_turns=10):
     current_message = "Hello!"
