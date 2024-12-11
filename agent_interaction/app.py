@@ -195,17 +195,26 @@ def parse_llm_response(content):
     thought_process = "No thought process provided."
     speech = "No speech provided."
 
-    # Extract Thought Process
-    thought_match = re.search(r"Thought process:\s*(.*?)\n\n", content, re.DOTALL)
-    if thought_match:
-        thought_process = thought_match.group(1).strip()
+    try:
+        # Remove unnecessary prefixes
+        content = re.sub(r"^(Response:|.*?responds:\n)", "", content, flags=re.IGNORECASE).strip()
 
-    # Extract Speech
-    speech_match = re.search(r"Speech:\s*(.+)", content, re.DOTALL)
-    if speech_match:
-        speech = speech_match.group(1).strip()
+        # Extract Thought Process
+        thought_match = re.search(r"Thought process:\s*(.*?)\n\n", content, re.DOTALL)
+        if thought_match:
+            thought_process = thought_match.group(1).strip()
+
+        # Extract Speech
+        speech_match = re.search(r"Speech:\s*(.+)", content, re.DOTALL)
+        if speech_match:
+            speech = speech_match.group(1).strip()
+
+    except Exception as e:
+        print(f"Error parsing LLM response content: {e}")
 
     return speech, thought_process
+
+
 
 
 def save_thought_process_to_db(agent_name, thought_process):
@@ -222,7 +231,6 @@ def save_thought_process_to_db(agent_name, thought_process):
 def agent_conversation(agent1, agent2, message):
     global conversation_turn
 
-    # Prepare memory and reflection context
     memory_context = agent2.get_memory_context()
     reflection = agent2.reflect()
     prompt = (
@@ -237,26 +245,32 @@ def agent_conversation(agent1, agent2, message):
     try:
         # Send prompt to LLM and get response
         llm_response = query_llm(prompt)
+        print("DEBUG: llm_response in agent_conversation:", type(llm_response), llm_response)
         print("DEBUG: Parsed JSON response:", llm_response)
 
-        # Validate response structure
-        if not isinstance(llm_response, dict) or "choices" not in llm_response or not llm_response["choices"]:
-            raise ValueError("Unexpected LLM response format.")
+        # Validate response structure minimally
+        if not llm_response.get("choices") or not llm_response["choices"][0].get("message"):
+            raise ValueError("LLM response does not contain valid 'choices'.")
 
-        # Extract content field
         content = llm_response["choices"][0]["message"]["content"]
+        print("DEBUG: Extracted content:", content)
 
         # Parse Thought Process and Speech
-        speech, thought_process = parse_llm_response(content)
+        try:
+            speech, thought_process = parse_llm_response(content)
+        except Exception as e:
+            print(f"Error parsing response content: {e}")
+            speech = "Error parsing speech."
+            thought_process = "Error parsing thought process."
 
-        # Save to short-term memory and thought processes
+        print(f"DEBUG: Thought process to save: {thought_process}")
+        print(f"DEBUG: Speech to save: {speech}")
+
+        # Save Thought Process and Speech to memory and database
         add_to_short_term_memory({"content": speech, "importance": 5})
         save_thought_process_to_db(agent2.name, thought_process)
-
-        # Promote important memories to long-term memory
         promote_to_long_term_memory()
 
-        # Save conversation to database
         save_message_to_db(conversation_turn, agent1.name, message)
         conversation_turn += 1
         save_message_to_db(conversation_turn, agent2.name, speech)
@@ -266,12 +280,9 @@ def agent_conversation(agent1, agent2, message):
 
     except Exception as e:
         print(f"Error in agent_conversation: {e}")
-        print(f"DEBUG: Raw LLM Response Content: {llm_response}")
         save_message_to_db(conversation_turn, "Error", str(e))
         conversation_turn += 1
         raise
-
-
 
 def automated_conversation(agent1, agent2, num_turns=10):
     current_message = "Hello!"

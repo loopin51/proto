@@ -27,15 +27,11 @@ def query_llm(prompt, max_retries=3, retry_delay=2):
                 try:
                     clean_response_text = response.text.strip()
                     response_data = json.loads(clean_response_text)
-                    print("DEBUG: Cleaned and parsed JSON response:", response_data)
+                    print("DEBUG: Parsed JSON response:", response_data)
+                    return response_data
                 except ValueError as e:
+                    print("DEBUG: JSON parsing failed. Raw response:", response.text)
                     raise RuntimeError(f"Error parsing JSON response: {e}")
-
-                # Check 'choices' field
-                if 'choices' in response_data and len(response_data['choices']) > 0:
-                    return response_data['choices'][0]['message']['content']
-                else:
-                    raise ValueError("LLM response does not contain 'choices' or is empty")
 
             except requests.exceptions.RequestException as e:
                 if attempt < max_retries - 1:
