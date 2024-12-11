@@ -4,8 +4,14 @@ from datetime import datetime
 from flask import Flask, render_template, request, jsonify
 from threading import Thread
 from agents.agent import Agent
-from utils.llm_connector import query_llm
-import re
+from agent_methods import (
+    save_message_to_db,
+    add_to_short_term_memory,
+    promote_to_long_term_memory,
+    agent_conversation,
+    retrieve_from_short_term_memory,
+    retrieve_from_long_term_memory
+)
 
 app = Flask(__name__)
 
@@ -13,7 +19,7 @@ app = Flask(__name__)
 agent1 = Agent("John", "Friendly pharmacist who likes helping others.")
 agent2 = Agent("Maria", "Artist who enjoys painting and nature.")
 
-# 대화 기록 저장 리스트
+# 대화 기록 저장 리스트 및 초기화
 conversation_history = []
 conversation_turn = 1
 
@@ -62,111 +68,30 @@ def init_db():
         )
     ''')
 
-    # Create thought processes table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS thought_processes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            agent_name TEXT,
-            thought_process TEXT
-        )
-    ''')
-
     conn.commit()
     conn.close()
 
-def add_to_short_term_memory(event):
-    conn = sqlite3.connect(database_path, check_same_thread=False)
-    cursor = conn.cursor()
-
-    # Insert new memory into short-term memory
-    cursor.execute('''
-        INSERT INTO short_term_memory (timestamp, content, importance)
-        VALUES (datetime('now'), ?, ?)
-    ''', (event['content'], event['importance']))
-    conn.commit()
-
-    # Check the number of entries in short-term memory
-    cursor.execute('SELECT COUNT(*) FROM short_term_memory')
-    count = cursor.fetchone()[0]
-
-    # Remove oldest memory if capacity exceeded
-    MAX_SHORT_TERM_MEMORY = 10
-    if count > MAX_SHORT_TERM_MEMORY:
-        cursor.execute('''
-            DELETE FROM short_term_memory WHERE id = (
-                SELECT id FROM short_term_memory ORDER BY timestamp ASC LIMIT 1
-            )
-        ''')
-        conn.commit()
-    conn.close()
-
-def promote_to_long_term_memory():
-    conn = sqlite3.connect(database_path, check_same_thread=False)
-    cursor = conn.cursor()
-
-    # Find important memories in short-term memory
-    cursor.execute('''
-        SELECT id, content, importance FROM short_term_memory WHERE importance > 7
-    ''')
-    important_memories = cursor.fetchall()
-
-    # Move each important memory to long-term memory
-    for memory in important_memories:
-        memory_id, content, importance = memory
-        cursor.execute('''
-            INSERT INTO long_term_memory (content, importance, last_accessed)
-            VALUES (?, ?, datetime('now'))
-        ''', (content, importance))
-        cursor.execute('DELETE FROM short_term_memory WHERE id = ?', (memory_id,))
-    conn.commit()
-    conn.close()
-
-def retrieve_from_short_term_memory():
-    conn = sqlite3.connect(database_path, check_same_thread=False)
-    cursor = conn.cursor()
-
-    # Retrieve recent memories
-    cursor.execute('''
-        SELECT content FROM short_term_memory ORDER BY timestamp DESC LIMIT 5
-    ''')
-    memories = [row[0] for row in cursor.fetchall()]
-    conn.close()
-    return memories
-
-def retrieve_from_long_term_memory():
-    conn = sqlite3.connect(database_path, check_same_thread=False)
-    cursor = conn.cursor()
-
-    # Retrieve important memories
-    cursor.execute('''
-        SELECT content FROM long_term_memory ORDER BY importance DESC, last_accessed DESC LIMIT 5
-    ''')
-    memories = [row[0] for row in cursor.fetchall()]
-    conn.close()
-    return memories
-
+# 라우팅
 @app.route('/')
 def index():
     return render_template('index.html', conversation_history=conversation_history)
 
 @app.route('/conversation', methods=['POST'])
 def conversation():
+    global conversation_turn
     user_message = request.form['message']
     try:
-        response = agent_conversation(agent1, agent2, user_message)
+        response, conversation_turn = agent_conversation(
+            database_path, agent1, agent2, user_message, conversation_turn
+        )
         return jsonify({"success": True, "response": response})
     except RuntimeError as e:
         return jsonify({"success": False, "error": str(e)})
 
-@app.route('/reflect', methods=['GET'])
-def reflect():
-    reflection = agent1.reflect()
-    return render_template('reflection.html', reflection=reflection)
-
 @app.route('/memory', methods=['GET'])
 def memory():
-    short_term = retrieve_from_short_term_memory()
-    long_term = retrieve_from_long_term_memory()
+    short_term = retrieve_from_short_term_memory(database_path)
+    long_term = retrieve_from_long_term_memory(database_path)
     return render_template('memory.html', short_term=short_term, long_term=long_term)
 
 @app.route('/get_conversation', methods=['GET'])
@@ -179,116 +104,15 @@ def get_conversation():
     conversation = [{"turn": row[0], "speaker": row[1], "message": row[2]} for row in rows]
     return jsonify(conversation)
 
-def save_message_to_db(turn, speaker, message):
-    conn = sqlite3.connect(database_path, check_same_thread=False)
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO conversations (turn, speaker, message) VALUES (?, ?, ?)
-    ''', (turn, speaker, message))
-    conn.commit()
-    conn.close()
-
-def parse_llm_response(content):
-    """
-    Parse the LLM's response content into Thought Process and Speech.
-    """
-    thought_process = "No thought process provided."
-    speech = "No speech provided."
-
-    try:
-        # Remove unnecessary prefixes
-        content = re.sub(r"^(Response:|.*?responds:\n)", "", content, flags=re.IGNORECASE).strip()
-
-        # Extract Thought Process
-        thought_match = re.search(r"Thought process:\s*(.*?)\n\n", content, re.DOTALL)
-        if thought_match:
-            thought_process = thought_match.group(1).strip()
-
-        # Extract Speech
-        speech_match = re.search(r"Speech:\s*(.+)", content, re.DOTALL)
-        if speech_match:
-            speech = speech_match.group(1).strip()
-
-    except Exception as e:
-        print(f"Error parsing LLM response content: {e}")
-
-    return speech, thought_process
-
-
-
-
-def save_thought_process_to_db(agent_name, thought_process):
-    conn = sqlite3.connect(database_path, check_same_thread=False)
-    cursor = conn.cursor()
-
-    # Save thought process
-    cursor.execute('''
-        INSERT INTO thought_processes (agent_name, thought_process) VALUES (?, ?)
-    ''', (agent_name, thought_process))
-    conn.commit()
-    conn.close()
-
-def agent_conversation(agent1, agent2, message):
-    global conversation_turn
-
-    memory_context = agent2.get_memory_context()
-    reflection = agent2.reflect()
-    prompt = (
-        f"{agent1.name} (Persona: {agent1.persona}) says to {agent2.name}: '{message}'\n"
-        f"Memory Context:\n{memory_context}\n"
-        f"Reflection:\n{reflection}\n\n"
-        f"Please respond to this message in the following format:\n"
-        f"Thought process:\n[Provide your reasoning here, including any considerations from memory and reflection.]\n\n"
-        f"Speech:\n[Provide the exact words the agent will say in the conversation.]"
-    )
-
-    try:
-        # Send prompt to LLM and get response
-        llm_response = query_llm(prompt)
-        print("DEBUG: llm_response in agent_conversation:", type(llm_response), llm_response)
-        print("DEBUG: Parsed JSON response:", llm_response)
-
-        # Validate response structure minimally
-        if not llm_response.get("choices") or not llm_response["choices"][0].get("message"):
-            raise ValueError("LLM response does not contain valid 'choices'.")
-
-        content = llm_response["choices"][0]["message"]["content"]
-        print("DEBUG: Extracted content:", content)
-
-        # Parse Thought Process and Speech
-        try:
-            speech, thought_process = parse_llm_response(content)
-        except Exception as e:
-            print(f"Error parsing response content: {e}")
-            speech = "Error parsing speech."
-            thought_process = "Error parsing thought process."
-
-        print(f"DEBUG: Thought process to save: {thought_process}")
-        print(f"DEBUG: Speech to save: {speech}")
-
-        # Save Thought Process and Speech to memory and database
-        add_to_short_term_memory({"content": speech, "importance": 5})
-        save_thought_process_to_db(agent2.name, thought_process)
-        promote_to_long_term_memory()
-
-        save_message_to_db(conversation_turn, agent1.name, message)
-        conversation_turn += 1
-        save_message_to_db(conversation_turn, agent2.name, speech)
-        conversation_turn += 1
-
-        return speech
-
-    except Exception as e:
-        print(f"Error in agent_conversation: {e}")
-        save_message_to_db(conversation_turn, "Error", str(e))
-        conversation_turn += 1
-        raise
-
+# 자동 대화
 def automated_conversation(agent1, agent2, num_turns=10):
     current_message = "Hello!"
+    global conversation_turn
     for _ in range(num_turns):
         try:
-            response = agent_conversation(agent1, agent2, current_message)
+            response, conversation_turn = agent_conversation(
+                database_path, agent1, agent2, current_message, conversation_turn
+            )
             current_message = response
         except RuntimeError as e:
             print(f"Error during automated conversation: {e}")
