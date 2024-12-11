@@ -15,6 +15,9 @@ def save_message_to_db(database_path, turn, speaker, message):
 
 # LLM 응답 파싱 함수
 def parse_llm_response(content):
+    """
+    Parse the LLM's response content into Thought Process and Speech.
+    """
     thought_process = "No thought process provided."
     speech = "No speech provided."
 
@@ -79,6 +82,32 @@ def promote_to_long_term_memory(database_path):
         cursor.execute('DELETE FROM short_term_memory WHERE id = ?', (memory_id,))
     conn.commit()
     conn.close()
+
+def retrieve_from_short_term_memory(database_path):
+    """
+    Retrieve recent memories from short-term memory.
+    """
+    conn = sqlite3.connect(database_path, check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT content FROM short_term_memory ORDER BY timestamp DESC LIMIT 5
+    ''')
+    memories = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return memories
+
+def retrieve_from_long_term_memory(database_path):
+    """
+    Retrieve important memories from long-term memory.
+    """
+    conn = sqlite3.connect(database_path, check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT content FROM long_term_memory ORDER BY importance DESC, last_accessed DESC LIMIT 5
+    ''')
+    memories = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return memories
 
 # 에이전트 대화 처리
 def agent_conversation(database_path, agent1, agent2, message, conversation_turn):
