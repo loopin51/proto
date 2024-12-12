@@ -83,9 +83,14 @@ def index():
 def conversation():
     global conversation_turn
     user_message = request.form['message']
+    # 새로운 컨텍스트 생성
+    context = {
+        "short_term_memory": retrieve_from_short_term_memory(database_path),
+        "long_term_memory": retrieve_from_long_term_memory(database_path)
+    }
     try:
         response, conversation_turn = agent_conversation(
-            database_path, agent1, agent2, user_message, conversation_turn
+            database_path, agent1, agent2, user_message, conversation_turn, context
         )
 
         # 기억 관리 호출
@@ -107,7 +112,7 @@ def run_memory_management():
     메모리 관리 자동화: 장기 기억 승격 및 회상 생성
     """
     while True:
-        manage_memories(database_path, agent1, interval=10)  # 10초 간격으로 실행
+        manage_memories(database_path, agent1)  # 10초 간격으로 실행
         time.sleep(10)
 
 @app.route('/get_conversation', methods=['GET'])
@@ -125,6 +130,11 @@ def automated_conversation(agent1, agent2, num_turns=10):
     current_message = "Hello!"
     global conversation_turn
     for _ in range(num_turns):
+        # 새로운 컨텍스트 생성
+        context = {
+            "short_term_memory": retrieve_from_short_term_memory(database_path),
+            "long_term_memory": retrieve_from_long_term_memory(database_path)
+        }
         try:
             response, conversation_turn = agent_conversation(
                 database_path, agent1, agent2, current_message, conversation_turn
@@ -153,6 +163,6 @@ if __name__ == '__main__':
     # 비동기 스레드에서 메모리 관리 실행
     memory_management_thread = Thread(target=run_memory_management)
     memory_management_thread.start()
-    
+
     # Flask 앱 실행
     app.run(debug=True)
