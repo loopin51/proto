@@ -4,15 +4,8 @@ from datetime import datetime
 from flask import Flask, render_template, request, jsonify
 from threading import Thread
 from agents.agent import Agent
-from agent_methods import (
-    save_message_to_db,
-    add_to_short_term_memory,
-    promote_to_long_term_memory,
-    agent_conversation,
-    retrieve_from_short_term_memory,
-    retrieve_from_long_term_memory,
-    parse_llm_response
-)
+from agent_methods import *
+import time
 
 app = Flask(__name__)
 
@@ -69,6 +62,15 @@ def init_db():
         )
     ''')
 
+    # Create thought processes table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS thought_processes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            agent_name TEXT,
+            thought_process TEXT
+        )
+    ''')
+
     conn.commit()
     conn.close()
 
@@ -85,6 +87,10 @@ def conversation():
         response, conversation_turn = agent_conversation(
             database_path, agent1, agent2, user_message, conversation_turn
         )
+
+        # 기억 관리 호출
+        manage_memories(database_path, {"content": response, "importance": 5, "agent_name": agent2.name})
+
         return jsonify({"success": True, "response": response})
     except RuntimeError as e:
         return jsonify({"success": False, "error": str(e)})
@@ -94,6 +100,15 @@ def memory():
     short_term = retrieve_from_short_term_memory(database_path)
     long_term = retrieve_from_long_term_memory(database_path)
     return render_template('memory.html', short_term=short_term, long_term=long_term)
+
+# 메모리 관리 자동화 주기적 실행
+def run_memory_management():
+    """
+    메모리 관리 자동화: 장기 기억 승격 및 회상 생성
+    """
+    while True:
+        manage_memories(database_path, agent1, interval=10)  # 10초 간격으로 실행
+        time.sleep(10)
 
 @app.route('/get_conversation', methods=['GET'])
 def get_conversation():
@@ -114,6 +129,10 @@ def automated_conversation(agent1, agent2, num_turns=10):
             response, conversation_turn = agent_conversation(
                 database_path, agent1, agent2, current_message, conversation_turn
             )
+
+            # 기억 관리 호출
+            manage_memories(database_path, {"content": response, "importance": 5, "agent_name": agent2.name})
+
             current_message = response
         except RuntimeError as e:
             print(f"Error during automated conversation: {e}")
@@ -131,5 +150,9 @@ if __name__ == '__main__':
     conversation_thread = Thread(target=run_automated_conversation)
     conversation_thread.start()
 
+    # 비동기 스레드에서 메모리 관리 실행
+    memory_management_thread = Thread(target=run_memory_management)
+    memory_management_thread.start()
+    
     # Flask 앱 실행
     app.run(debug=True)
