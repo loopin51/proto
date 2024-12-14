@@ -245,10 +245,10 @@ def store_reflection(reflection):
 
 
 # 에이전트 대화 처리 (수정됨)
-def agent_conversation(database_path, agent1, agent2, message, conversation_turn, context):
-    """
-    Handle agent conversation and manage memories.
-    """
+def agent_conversation(database_path, agent1, agent2, message, conversation_turn, context=None):
+    if context is None:
+        context = {}
+
     memory_context = agent2.get_memory_context()
     reflection = agent2.reflect()
     prompt = (
@@ -256,16 +256,20 @@ def agent_conversation(database_path, agent1, agent2, message, conversation_turn
         f"Memory Context:\n{memory_context}\n"
         f"Reflection:\n{reflection}\n\n"
         f"Please respond to this message in the following format:\n"
-        f"Thought process:\n[Provide your reasoning here.]\n\n"
+        f"Thought process:\n[Provide your reasoning here, including any considerations from memory and reflection.]\n\n"
         f"Speech:\n[Provide the exact words the agent will say in the conversation.]"
     )
 
     try:
         llm_response = query_llm(prompt)
+        if not isinstance(llm_response, dict) or "choices" not in llm_response:
+            raise ValueError("Invalid LLM response format.")
+
         content = llm_response["choices"][0]["message"]["content"]
         speech, thought_process = parse_llm_response(content)
 
-        add_to_short_term_memory(database_path, {"content": speech, "importance": 5}, context)
+        importance_score = calculate_importance(context, memory_context, reflection, speech)
+        add_to_short_term_memory(database_path, {"content": speech, "importance": importance_score})
         promote_to_long_term_memory(database_path)
 
         save_message_to_db(database_path, conversation_turn, agent1.name, message)
@@ -280,7 +284,7 @@ def agent_conversation(database_path, agent1, agent2, message, conversation_turn
         save_message_to_db(database_path, conversation_turn, "Error", str(e))
         conversation_turn += 1
         raise
-
+    
 # 기억 자동 관리 함수
 def manage_memories(database_path, new_event):
     """

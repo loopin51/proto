@@ -62,15 +62,6 @@ def init_db():
         )
     ''')
 
-    # Create thought processes table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS thought_processes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            agent_name TEXT,
-            thought_process TEXT
-        )
-    ''')
-
     conn.commit()
     conn.close()
 
@@ -83,19 +74,17 @@ def index():
 def conversation():
     global conversation_turn
     user_message = request.form['message']
+
     # 새로운 컨텍스트 생성
     context = {
         "short_term_memory": retrieve_from_short_term_memory(database_path),
         "long_term_memory": retrieve_from_long_term_memory(database_path)
     }
+
     try:
         response, conversation_turn = agent_conversation(
             database_path, agent1, agent2, user_message, conversation_turn, context
         )
-
-        # 기억 관리 호출
-        manage_memories(database_path, {"content": response, "importance": 5, "agent_name": agent2.name})
-
         return jsonify({"success": True, "response": response})
     except RuntimeError as e:
         return jsonify({"success": False, "error": str(e)})
@@ -105,15 +94,6 @@ def memory():
     short_term = retrieve_from_short_term_memory(database_path)
     long_term = retrieve_from_long_term_memory(database_path)
     return render_template('memory.html', short_term=short_term, long_term=long_term)
-
-# 메모리 관리 자동화 주기적 실행
-def run_memory_management():
-    """
-    메모리 관리 자동화: 장기 기억 승격 및 회상 생성
-    """
-    while True:
-        manage_memories(database_path, agent1)  # 10초 간격으로 실행
-        time.sleep(10)
 
 @app.route('/get_conversation', methods=['GET'])
 def get_conversation():
@@ -129,24 +109,35 @@ def get_conversation():
 def automated_conversation(agent1, agent2, num_turns=10):
     current_message = "Hello!"
     global conversation_turn
+
     for _ in range(num_turns):
         # 새로운 컨텍스트 생성
         context = {
             "short_term_memory": retrieve_from_short_term_memory(database_path),
             "long_term_memory": retrieve_from_long_term_memory(database_path)
         }
+
         try:
             response, conversation_turn = agent_conversation(
-                database_path, agent1, agent2, current_message, conversation_turn
+                database_path, agent1, agent2, current_message, conversation_turn, context
             )
-
-            # 기억 관리 호출
-            manage_memories(database_path, {"content": response, "importance": 5, "agent_name": agent2.name})
-
             current_message = response
         except RuntimeError as e:
             print(f"Error during automated conversation: {e}")
             break
+
+# 메모리 관리 자동화 주기적 실행
+def run_memory_management():
+    """
+    메모리 관리 자동화: 장기 기억 승격 및 회상 생성.
+    """
+    while True:
+        try:
+            manage_memories(database_path, agent2.name)
+        except Exception as e:
+            print(f"Error in memory management thread: {e}")
+        time.sleep(10)  # 10초 간격으로 실행
+
 
 # 비동기로 자동 대화 실행
 def run_automated_conversation():
