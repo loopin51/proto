@@ -1,3 +1,4 @@
 /agent_interaction/agents/__pycache__/
 /agent_interaction/utils/__pycache__/
 proto_venv/
+database/

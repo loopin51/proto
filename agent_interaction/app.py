@@ -6,6 +6,8 @@ from threading import Thread
 from agents.agent import Agent
 from agent_methods import *
 import time
+import signal
+import sys
 
 app = Flask(__name__)
 
@@ -17,55 +19,10 @@ agent2 = Agent("Maria", "Artist who enjoys painting and nature.")
 conversation_history = []
 conversation_turn = 1
 
-# 현재 대화 시작 시각 기반 데이터베이스 파일 경로 생성
-def get_database_path():
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    db_path = os.path.join('database', f'conversations_{timestamp}.db')
-    return db_path
-
-database_path = get_database_path()
-
 # 데이터베이스 초기화
-def init_db():
-    if not os.path.exists(os.path.dirname(database_path)):
-        os.makedirs(os.path.dirname(database_path))
-    conn = sqlite3.connect(database_path)
-    cursor = conn.cursor()
+init_memory_db()
 
-    # Create conversations table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS conversations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            turn INTEGER,
-            speaker TEXT,
-            message TEXT
-        )
-    ''')
-
-    # Create short-term memory table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS short_term_memory (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TEXT,
-            content TEXT,
-            importance INTEGER
-        )
-    ''')
-
-    # Create long-term memory table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS long_term_memory (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            content TEXT,
-            importance INTEGER,
-            last_accessed TEXT
-        )
-    ''')
-
-    conn.commit()
-    conn.close()
-
-# 라우팅
+# Routing
 @app.route('/')
 def index():
     return render_template('index.html', conversation_history=conversation_history)
@@ -74,25 +31,53 @@ def index():
 def conversation():
     global conversation_turn
     user_message = request.form['message']
+    """
+    Purpose: 
+        This function handles user messages sent via the Flask web interface.
+        It interacts with the agent_conversation function to generate responses 
+        and manages conversation flow for user-agent interaction.
 
-    # 새로운 컨텍스트 생성
+    Use Case:
+        Primarily used when a web-based client (e.g., browser) is required to 
+        interact with the agents in real-time.
+
+    Current Status:
+        Not actively used in the current project as the automated_conversation 
+        function fulfills the primary use case of simulating agent interactions. 
+        Retained for potential future use or manual testing purposes.
+    """
+    global conversation_turn
+    user_message = request.form['message']
+
+    # Generate context based on agent memories
+    # This retrieves both short-term and long-term memory for the responding agent.
     context = {
-        "short_term_memory": retrieve_from_short_term_memory(database_path),
-        "long_term_memory": retrieve_from_long_term_memory(database_path)
+        "short_term_memory": retrieve_from_short_term_memory(database_path, agent2.name),
+        "long_term_memory": retrieve_from_long_term_memory(database_path, agent2.name)
     }
 
     try:
+        # Perform agent conversation
         response, conversation_turn = agent_conversation(
             database_path, agent1, agent2, user_message, conversation_turn, context
         )
+
+        # Call manage_memories to process new memory
+        manage_memories(
+            database_path,
+            agent_name=agent2.name,
+            new_event={"content": response, "importance": 5}  # Adjust importance as needed
+        )
+
         return jsonify({"success": True, "response": response})
+
     except RuntimeError as e:
         return jsonify({"success": False, "error": str(e)})
 
 @app.route('/memory', methods=['GET'])
 def memory():
-    short_term = retrieve_from_short_term_memory(database_path)
-    long_term = retrieve_from_long_term_memory(database_path)
+    short_term = retrieve_from_short_term_memory(database_path, agent2.name)
+    long_term = retrieve_from_long_term_memory(database_path, agent2.name)
     return render_template('memory.html', short_term=short_term, long_term=long_term)
 
 @app.route('/get_conversation', methods=['GET'])
@@ -113,8 +98,8 @@ def automated_conversation(agent1, agent2, num_turns=10):
     for _ in range(num_turns):
         # 새로운 컨텍스트 생성
         context = {
-            "short_term_memory": retrieve_from_short_term_memory(database_path),
-            "long_term_memory": retrieve_from_long_term_memory(database_path)
+            "short_term_memory": retrieve_from_short_term_memory(database_path, agent2.name),
+            "long_term_memory": retrieve_from_long_term_memory(database_path, agent2.name),
         }
 
         try:
@@ -122,38 +107,55 @@ def automated_conversation(agent1, agent2, num_turns=10):
                 database_path, agent1, agent2, current_message, conversation_turn, context
             )
             current_message = response
+
+            # Call manage_memories to process new memory
+            manage_memories(
+                database_path,
+                agent_name=agent2.name,
+                new_event={"content": response, "importance": 5}  # Adjust importance as needed
+            )
+
         except RuntimeError as e:
             print(f"Error during automated conversation: {e}")
             break
 
 # 메모리 관리 자동화 주기적 실행
-def run_memory_management():
+def run_memory_management(conversation_turn, num_turns):
     """
-    메모리 관리 자동화: 장기 기억 승격 및 회상 생성.
+    Periodically manage memory: promote important short-term memories and create reflections.
     """
-    while True:
+    while conversation_turn < num_turns:
         try:
+            print(f"DEBUG: Running memory management at conversation_turn={conversation_turn}")
             manage_memories(database_path, agent2.name)
         except Exception as e:
             print(f"Error in memory management thread: {e}")
         time.sleep(10)  # 10초 간격으로 실행
-
+    print("Memory management thread terminated as conversation_turn reached num_turns.")
 
 # 비동기로 자동 대화 실행
 def run_automated_conversation():
     automated_conversation(agent1, agent2, num_turns=10)
 
-if __name__ == '__main__':
-    # 데이터베이스 초기화
-    init_db()
+# Graceful shutdown handler
+def shutdown_handler(signal, frame):
+    print("\nShutting down gracefully...")
+    sys.exit(0)
 
-    # 비동기 스레드에서 자동 대화 실행
-    conversation_thread = Thread(target=run_automated_conversation)
+# 메인 실행
+if __name__ == '__main__':
+    # Register signal handler for graceful shutdown
+    signal.signal(signal.SIGINT, shutdown_handler)
+
+    # Set threads as daemon to ensure they stop with the main process
+    conversation_thread = Thread(target=run_automated_conversation, daemon=True)
     conversation_thread.start()
 
-    # 비동기 스레드에서 메모리 관리 실행
-    memory_management_thread = Thread(target=run_memory_management)
+    memory_management_thread = Thread(target=run_memory_management, args=(conversation_turn, 10), daemon=True)
     memory_management_thread.start()
 
-    # Flask 앱 실행
-    app.run(debug=True)
+    # Run Flask app
+    try:
+        app.run(debug=True)
+    except KeyboardInterrupt:
+        print("Server interrupted and shutting down...")
