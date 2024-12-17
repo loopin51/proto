@@ -2,7 +2,7 @@ import sqlite3
 import os
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify
-from threading import Thread
+from threading import Thread, Lock
 from agents.agent import Agent
 from agent_methods import *
 import time
@@ -18,9 +18,11 @@ agent2 = Agent("Maria", "Artist who enjoys painting and nature.")
 # 대화 기록 저장 리스트 및 초기화
 conversation_history = []
 conversation_turn = 1
+conversation_lock = Lock()  # Protect conversation_turn
 
 # 데이터베이스 초기화
-init_memory_db()
+#init_memory_db()
+init_db_with_preset()
 
 # Routing
 @app.route('/')
@@ -58,9 +60,12 @@ def conversation():
 
     try:
         # Perform agent conversation
-        response, conversation_turn = agent_conversation(
+        response, turn = agent_conversation(
             database_path, agent1, agent2, user_message, conversation_turn, context
         )
+
+        with conversation_lock:
+            conversation_turn = turn  # Update safely
 
         # Call manage_memories to process new memory
         manage_memories(
@@ -103,9 +108,12 @@ def automated_conversation(agent1, agent2, num_turns=10):
         }
 
         try:
-            response, conversation_turn = agent_conversation(
+            response, turn = agent_conversation(
                 database_path, agent1, agent2, current_message, conversation_turn, context
             )
+
+            with conversation_lock:
+                conversation_turn = turn  # Update safely
             current_message = response
 
             # Call manage_memories to process new memory
@@ -142,6 +150,22 @@ def shutdown_handler(signal, frame):
     print("\nShutting down gracefully...")
     sys.exit(0)
 
+if __name__ == '__main__':
+    signal.signal(signal.SIGINT, shutdown_handler)
+
+    conversation_thread = Thread(target=run_automated_conversation, daemon=True)
+    conversation_thread.start()
+
+    memory_management_thread = Thread(
+        target=run_memory_management, args=(conversation_turn, 10), daemon=True
+    )
+    memory_management_thread.start()
+
+    try:
+        app.run(debug=True)
+    except KeyboardInterrupt:
+        print("Server interrupted and shutting down...")
+
 # 메인 실행
 if __name__ == '__main__':
     # Register signal handler for graceful shutdown
@@ -151,8 +175,8 @@ if __name__ == '__main__':
     conversation_thread = Thread(target=run_automated_conversation, daemon=True)
     conversation_thread.start()
 
-    memory_management_thread = Thread(target=run_memory_management, args=(conversation_turn, 10), daemon=True)
-    memory_management_thread.start()
+    #memory_management_thread = Thread(target=run_memory_management, args=(conversation_turn, 10), daemon=True)
+    #memory_management_thread.start()
 
     # Run Flask app
     try:
