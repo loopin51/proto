@@ -21,16 +21,16 @@ def query_llm(prompt, max_retries=3, retry_delay=2):
                 response.raise_for_status()
 
                 # Debug raw response
-                print("DEBUG: Raw response text:", response.text)
+                #print("DEBUG: Raw response text:", response.text)
 
                 # Parse JSON response
                 try:
                     clean_response_text = response.text.strip()
                     response_data = json.loads(clean_response_text)
-                    print("DEBUG: Parsed JSON response:", response_data)
+                    #print("DEBUG: Parsed JSON response:", response_data)
                     return response_data
                 except ValueError as e:
-                    print("DEBUG: JSON parsing failed. Raw response:", response.text)
+                    #print("DEBUG: JSON parsing failed. Raw response:", response.text)
                     raise RuntimeError(f"Error parsing JSON response: {e}")
 
             except requests.exceptions.RequestException as e:

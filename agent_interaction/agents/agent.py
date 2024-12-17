@@ -33,17 +33,24 @@ class Agent:
             "long_term_memory": long_term_memories
         }
 
-    def reflect(self, database_path):
+    def reflect(self, database_path, reflection_type="general"): #not used yet
         """
-        Generate a reflection based on the agent's memories.
+        Generate a reflection based on the agent's memories and specified reflection type.
+
         Args:
             database_path (str): Path to the SQLite database where memories are stored.
+            reflection_type (str): Type of reflection to generate. Options: "general", "strategy", "lesson", "summary", "prediction".
+
         Returns:
             str: Reflection generated from memory.
         """
-        from agent_methods import retrieve_context_for_reflection, generate_reflection
-        
-        # Generate reflection
-        reflection = generate_reflection(database_path, self.name)
+        from agent_methods import generate_reflection
 
-        return reflection
+        try:
+            # Generate reflection using the agent's name and the specified reflection type
+            reflection = generate_reflection(database_path, self.name, reflection_type)
+            print(f"DEBUG: Reflection generated for {self.name} - Type: {reflection_type}\n{reflection}")
+            return reflection
+        except Exception as e:
+            print(f"Error generating reflection for {self.name}: {e}")
+            return None
