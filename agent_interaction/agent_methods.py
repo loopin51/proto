@@ -21,11 +21,14 @@ def debug_log(message):
 # 데이터베이스 파일 경로 생성 함수
 def get_database_path():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    db_path = os.path.join("database", f"memory_system_{timestamp}.db")
-    return db_path
+    return os.path.join("database", f"memory_system_{timestamp}.db")
 
 # 전역 데이터베이스 경로
-database_path = get_database_path()
+database_path = None
+
+def set_database_path(path):
+    global database_path
+    database_path = path
 
 # 데이터베이스 초기화
 def init_memory_db():
@@ -128,7 +131,7 @@ def copy_preset_to_new_db(preset_db_path, database_path):
     print(f"Data from {preset_db_path} has been copied to {database_path}")
 
 # Initialize memory database with preset data
-def init_db_with_preset():
+def init_db_with_preset(database_path):
     # Preset database path
     preset_db_path = os.path.join(os.path.dirname(__file__), "preset_memory.db")
     # Create a new database and copy preset data
@@ -522,7 +525,7 @@ def agent_conversation(database_path, agent1, agent2, message, conversation_turn
         str: The response speech from agent2.
         int: Updated conversation turn.
     """
-    debug_log(f"{agent1.name} is talking to {agent2.name} with message: {message}")
+    debug_log(f"{agent1.name} is talking to {agent2.name} with message: {message}. Conversation turn: {conversation_turn}")
 
     if context is None:
         # Retrieve context if not provided

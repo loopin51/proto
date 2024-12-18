@@ -22,7 +22,13 @@ conversation_lock = Lock()  # Protect conversation_turn
 
 # 데이터베이스 초기화
 #init_memory_db()
-init_db_with_preset()
+
+# DB 경로를 한 번만 설정
+database_path = get_database_path()
+set_database_path(database_path)
+
+# 프리셋 데이터베이스 초기화
+init_db_with_preset(database_path)
 
 # Routing
 @app.route('/')

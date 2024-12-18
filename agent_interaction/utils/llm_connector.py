@@ -6,7 +6,7 @@ import json
 # 최대 동시 요청 제한 설정
 llm_request_lock = threading.Semaphore(5)
 
-def query_llm(prompt, max_retries=3, retry_delay=2):
+def query_llm(prompt, max_retries=10,retry_delay=2):
     with llm_request_lock:
         url = "http://127.0.0.1:1234/v1/chat/completions"
         data = {
