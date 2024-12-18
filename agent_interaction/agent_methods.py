@@ -5,6 +5,7 @@ from utils.llm_connector import query_llm
 import os
 from textblob import TextBlob
 from sentence_transformers import SentenceTransformer, util
+from prompt_templates import *
 
 model = SentenceTransformer('all-MiniLM-L6-v2') #model used for context similarity calculation
 
@@ -439,42 +440,9 @@ def generate_reflection(database_path, agent_name, reflection_type="general"):
     debug_log(f" Context retrieved for reflection - {context}")
 
     # Generate the prompt using the retrieved context
-    if reflection_type == "strategy":
-        prompt = (
-            f"Based on the following memories of agent '{agent_name}':\n\n"
-            "Short-term memories:\n" + "\n".join(context["short_term_memories"]) + "\n\n"
-            "Long-term memories:\n" + "\n".join(context["long_term_memories"]) + "\n\n"
-            "What is the best course of action for the current situation? Provide a detailed reasoning and action plan."
-        )
-    elif reflection_type == "lesson":
-        prompt = (
-            f"Based on the following memories of agent '{agent_name}':\n\n"
-            "Short-term memories:\n" + "\n".join(context["short_term_memories"]) + "\n\n"
-            "Long-term memories:\n" + "\n".join(context["long_term_memories"]) + "\n\n"
-            "Summarize the key lessons learned from these experiences."
-        )
-    elif reflection_type == "summary":
-        prompt = (
-            f"Based on the following memories of agent '{agent_name}':\n\n"
-            "Short-term memories:\n" + "\n".join(context["short_term_memories"]) + "\n\n"
-            "Long-term memories:\n" + "\n".join(context["long_term_memories"]) + "\n\n"
-            "Summarize these memories into a concise overview."
-        )
-    elif reflection_type == "prediction":
-        prompt = (
-            f"Based on the following memories of agent '{agent_name}':\n\n"
-            "Short-term memories:\n" + "\n".join(context["short_term_memories"]) + "\n\n"
-            "Long-term memories:\n" + "\n".join(context["long_term_memories"]) + "\n\n"
-            "Predict the likely outcomes of taking the current proposed action."
-        )
-    else:  # Default to general reflection
-        prompt = (
-            f"Based on the following memories of agent '{agent_name}':\n\n"
-            "Short-term memories:\n" + "\n".join(context["short_term_memories"]) + "\n\n"
-            "Long-term memories:\n" + "\n".join(context["long_term_memories"]) + "\n\n"
-            "Reflect on these memories and generate a summary or insight."
-        )
-
+    prompt = reflection_prompt(
+        agent_name, context["short_term_memories"], context["long_term_memories"], reflection_type
+    )
     # Call the LLM with the generated prompt
     try:
         reflection = query_llm(prompt)
@@ -537,24 +505,16 @@ def agent_conversation(database_path, agent1, agent2, message, conversation_turn
     memory_context = agent2.get_memory_context(database_path)
 
     # Generate all types of reflections
-    reflection_summary = agent2.reflect(database_path, reflection_type="summary")
-    reflection_strategy = agent2.reflect(database_path, reflection_type="strategy")
-    reflection_lesson = agent2.reflect(database_path, reflection_type="lesson")
-    reflection_prediction = agent2.reflect(database_path, reflection_type="prediction")
-
+    reflections = {
+        "summary": agent2.reflect(database_path, "summary"),
+        "strategy": agent2.reflect(database_path, "strategy"),
+        "lesson": agent2.reflect(database_path, "lesson"),
+        "prediction": agent2.reflect(database_path, "prediction")
+    }
     # Construct the prompt with all reflection types
-    prompt = (
-        f"{agent1.name} (Persona: {agent1.persona}) says to {agent2.name}: '{message}'\n"
-        f"Memory Context:\n{memory_context}\n\n"
-        f"Reflections:\n"
-        f"- Summary:\n{reflection_summary}\n"
-        f"- Strategy:\n{reflection_strategy}\n"
-        f"- Lesson:\n{reflection_lesson}\n"
-        f"- Prediction:\n{reflection_prediction}\n\n"
-        f"Please respond to this message in the following format:\n"
-        f"Thought process:\n[Provide your reasoning here, including any considerations from memory and reflections.]\n\n"
-        f"Speech:\n[Provide the exact words {agent2.name} will say in the conversation.]"
-    )
+    prompt = conversation_prompt(
+        agent1.name, agent1.persona, agent2.name, message, memory_context, reflections
+    )    
 
     try:
         # Send the prompt to the LLM
