@@ -19,7 +19,8 @@ def create_preset_db():
             content TEXT,
             importance INTEGER,
             last_accessed TEXT,
-            reflection_type TEXT
+            reflection_type TEXT,
+            reference_count INTEGER DEFAULT 0
         )
     ''')
 
@@ -30,7 +31,8 @@ def create_preset_db():
             agent_name TEXT,
             timestamp TEXT,
             content TEXT,
-            importance INTEGER
+            importance INTEGER,
+            reference_count INTEGER DEFAULT 0
         )
     ''')
 
@@ -53,22 +55,6 @@ def create_preset_db():
         )
     ''')
 
-
-    # Data insertion
-    # Long-Term Memory (LTM)
-    ltm_data = [
-        ("John", "Maria tries to capture warmth and healing through observing nature.", 8, "Experience Summary", "2024-12-14"),
-        ("John", "Small actions can create big changes. Recommending lavender tea reminds me of this.", 9, "Lesson", "2024-12-14"),
-        ("John", "The health booth should focus on herbal remedies connected to nature.", 10, "Strategy", "2024-12-14"),
-        ("Maria", "John helps patients by using herbal remedies in his consultations.", 8, "Experience Summary", "2024-12-14"),
-        ("Maria", "Even small help can have a big impact on others.", 9, "Lesson", "2024-12-14"),
-        ("Maria", "I should express more vitality and healing from nature in my artwork.", 10, "Strategy", "2024-12-14")
-    ]
-    cursor.executemany('''
-        INSERT INTO long_term_memory (agent_name, content, importance, reflection_type, last_accessed)
-        VALUES (?, ?, ?, ?, ?)
-    ''', ltm_data)
-
     # Short-Term Memory (STM)
     stm_data = [
         ("John", "2024-12-14 19:00:00", "Maria decided on 'Dialogue with Nature' as the theme for her exhibition.", 7),
@@ -79,9 +65,24 @@ def create_preset_db():
         ("Maria", "2024-12-14 19:02:00", "John wants to connect elements from nature to health consultations.", 6)
     ]
     cursor.executemany('''
-        INSERT INTO short_term_memory (agent_name, timestamp, content, importance)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO short_term_memory (agent_name, timestamp, content, importance, reference_count)
+        VALUES (?, ?, ?, ?, 0)
     ''', stm_data)
+
+    # Data insertion
+    # Long-Term Memory (LTM)
+    ltm_data = [
+        ("John", "Maria tries to capture warmth and healing through observing nature.", 8, "Experience Summary", "2024-12-14 19:00:00"),
+        ("John", "Small actions can create big changes. Recommending lavender tea reminds me of this.", 9, "Lesson", "2024-12-14 19:01:00"),
+        ("John", "The health booth should focus on herbal remedies connected to nature.", 10, "Strategy", "2024-12-14 19:02:00"),
+        ("Maria", "John helps patients by using herbal remedies in his consultations.", 8, "Experience Summary", "2024-12-14 19:00:00"),
+        ("Maria", "Even small help can have a big impact on others.", 9, "Lesson", "2024-12-14 19:01:00"),
+        ("Maria", "I should express more vitality and healing from nature in my artwork.", 10, "Strategy", "2024-12-14 19:02:00")
+    ]
+    cursor.executemany('''
+        INSERT INTO long_term_memory (agent_name, content, importance, reflection_type, last_accessed, reference_count)
+        VALUES (?, ?, ?, ?, ?, 0)
+    ''', ltm_data)
 
     # Conversations
     conversations_data = [

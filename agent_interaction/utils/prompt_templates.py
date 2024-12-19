@@ -74,3 +74,21 @@ def reflection_prompt(agent_name, short_term_memories, long_term_memories, refle
             f"Long-term memories:\n" + "\n".join(long_term_memories) + "\n\n"
             f"Reflect on these memories and generate a summary or insight."
         )
+
+def summarize_memory_prompt(content, context):
+    """
+    Generate the prompt for summarizing memory content.
+
+    Args:
+        content (str): The memory content to summarize.
+        context (str): Current conversation context.
+
+    Returns:
+        str: A formatted prompt string.
+    """
+    return (
+        f"Summarize the following memory content based on the given context:\n\n"
+        f"Memory Content:\n{content}\n\n"
+        f"Context:\n{context}\n\n"
+        f"Provide a concise and clear summary."
+    )

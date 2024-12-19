@@ -4,11 +4,11 @@ from datetime import datetime
 from flask import Flask, render_template, request, jsonify
 from threading import Thread, Lock
 from agents.agent import Agent
-from agent_methods import *
+from utils.agent_methods import *
 import time
 import signal
 import sys
-
+from utils.context_methods import *
 app = Flask(__name__)
 
 # 에이전트 초기화
@@ -59,10 +59,7 @@ def conversation():
 
     # Generate context based on agent memories
     # This retrieves both short-term and long-term memory for the responding agent.
-    context = {
-        "short_term_memory": retrieve_from_short_term_memory(database_path, agent2.name),
-        "long_term_memory": retrieve_from_long_term_memory(database_path, agent2.name)
-    }
+    context = generate_context(database_path, agent2.name)
 
     try:
         # Perform agent conversation
@@ -77,7 +74,7 @@ def conversation():
         manage_memories(
             database_path,
             agent_name=agent2.name,
-            new_event={"content": response, "importance": 5}  # Adjust importance as needed
+            new_event=None   #{"content": response, "importance": 5}  # Adjust importance as needed
         )
 
         return jsonify({"success": True, "response": response})
@@ -108,10 +105,8 @@ def automated_conversation(agent1, agent2, num_turns=10):
 
     for _ in range(num_turns):
         # 새로운 컨텍스트 생성
-        context = {
-            "short_term_memory": retrieve_from_short_term_memory(database_path, agent2.name),
-            "long_term_memory": retrieve_from_long_term_memory(database_path, agent2.name),
-        }
+        context = generate_context(database_path, agent2.name)
+
 
         try:
             response, turn = agent_conversation(
@@ -126,7 +121,7 @@ def automated_conversation(agent1, agent2, num_turns=10):
             manage_memories(
                 database_path,
                 agent_name=agent2.name,
-                new_event={"content": response, "importance": 5}  # Adjust importance as needed
+                new_event= None # Not needed
             )
 
         except RuntimeError as e:

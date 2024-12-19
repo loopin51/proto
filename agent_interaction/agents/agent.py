@@ -21,17 +21,21 @@ class Agent:
         Args:
             database_path (str): Path to the SQLite database where memories are stored.
         Returns:
-            dict: Combined short-term and long-term memory.
+            str: Combined short-term and long-term memory.
         """
-        from agent_methods import retrieve_from_short_term_memory, retrieve_from_long_term_memory
+        from utils.agent_methods import retrieve_from_short_term_memory, retrieve_from_long_term_memory
 
         short_term_memories = retrieve_from_short_term_memory(database_path, self.name)
         long_term_memories = retrieve_from_long_term_memory(database_path, self.name)
 
-        return {
-            "short_term_memory": short_term_memories,
-            "long_term_memory": long_term_memories
-        }
+         # Format the memories into a string
+        short_term_section = "Short-term memories:\n" + "\n".join(short_term_memories) if short_term_memories else "Short-term memories: None"
+        long_term_section = "Long-term memories:\n" + "\n".join(long_term_memories) if long_term_memories else "Long-term memories: None"
+
+        # Combine sections into a single string
+        memory_context = f"{short_term_section}\n\n{long_term_section}"
+        
+        return memory_context
 
     def reflect(self, database_path, reflection_type="general"): #not used yet
         """
@@ -44,7 +48,7 @@ class Agent:
         Returns:
             str: Reflection generated from memory.
         """
-        from agent_methods import generate_reflection
+        from agent_interaction.utils.agent_methods import generate_reflection
 
         try:
             # Generate reflection using the agent's name and the specified reflection type
