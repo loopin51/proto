@@ -39,7 +39,7 @@ def reflection_prompt(agent_name, short_term_memories, long_term_memories, refle
     Returns:
         str: Formatted reflection prompt.
     """
-    if reflection_type == "strategy":
+    if reflection_type == "strategy": #응답 포맷 정형화 필요
         return (
             f"Based on the following memories of agent '{agent_name}':\n\n"
             f"Short-term memories:\n" + "\n".join(short_term_memories) + "\n\n"

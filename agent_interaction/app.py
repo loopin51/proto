@@ -9,6 +9,8 @@ import time
 import signal
 import sys
 from utils.context_methods import *
+from utils.memory_management import *
+
 app = Flask(__name__)
 
 # 에이전트 초기화
@@ -117,12 +119,14 @@ def automated_conversation(agent1, agent2, num_turns=10):
                 conversation_turn = turn  # Update safely
             current_message = response
 
+            """
             # Call manage_memories to process new memory
             manage_memories(
                 database_path,
                 agent_name=agent2.name,
                 new_event= None # Not needed
             )
+            """ #얘는 이 함수가 아니고 백그라운드에서 돌아가야함. 응답 기다려야해서 
 
         except RuntimeError as e:
             print(f"Error during automated conversation: {e}")
