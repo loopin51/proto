@@ -119,7 +119,7 @@ def agent_conversation(database_path, agent1, agent2, message, conversation_turn
 
         # 10) 대화 로그 DB 저장
         save_message_to_db(database_path, conversation_turn, agent1.name, message)
-        conversation_turn += 1
+        #conversation_turn += 1 #이거 안해야함 나중에 고치셈
         save_message_to_db(database_path, conversation_turn, agent2.name, speech)
         conversation_turn += 1
 

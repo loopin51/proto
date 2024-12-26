@@ -136,3 +136,21 @@ def system_prompt():
         f"4. You should strive for vivid, detailed expressions of your emotional depth and personal narrative, like an actor fully in character.\n"
         f"Remain consistent with your backstory, memories, and emotional status throughout the conversation, and adapt your responses accordingly whenever new events or emotional shifts occur."
     )
+
+def get_summarize_memory_prompt(content, context):
+    """
+    Generate the prompt for summarizing memory content.
+
+    Args:
+        content (str): The memory content to summarize.
+        context (str): Current conversation context.
+
+    Returns:
+        str: A formatted prompt string.
+    """
+    return (
+        f"Summarize the following memory content based on the given context:\n\n"
+        f"Memory Content:\n{content}\n\n"
+        f"Context:\n{context}\n\n"
+        f"Provide a concise and clear summary."
+    )

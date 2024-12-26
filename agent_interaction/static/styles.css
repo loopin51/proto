@@ -1,3 +1,4 @@
+/* 기본 스타일 */
 body {
     font-family: Arial, sans-serif;
     margin: 0;
@@ -18,32 +19,119 @@ header a {
     margin-left: 1em;
 }
 
-.scenario-section {
+.home-menu {
     max-width: 800px;
-    margin: 1em auto;
+    margin: 2em auto;
     padding: 1em;
     background: #fff;
     border-radius: 6px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
-.scenario-block {
-    background: #fff;
-    margin-bottom: 2em;
+.home-menu h2 {
+    margin-top: 0;
+}
+
+.home-menu ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.home-menu li {
+    margin: 1em 0;
+}
+
+.home-menu a {
+    text-decoration: none;
+    color: #4CAF50;
+    font-size: 1.2em;
+}
+
+.home-menu a:hover {
+    text-decoration: underline;
+}
+
+footer {
+    background: #4CAF50;
+    color: #fff;
+    text-align: center;
     padding: 1em;
+    position: fixed;
+    width: 100%;
+    bottom: 0;
+}
+
+.scenario-selection{
+    max-width: 800px;
+    margin: 2em auto;
+    padding: 1em;
+    background: #fff;
     border-radius: 6px;
-    box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.scenario-selection h2{
+    margin-top: 0;
+}
+
+.scenario-selection form{
+    display: flex;
+    flex-direction: column;
+}
+
+.scenario-selection label{
+    margin-bottom: 0.5em;
+}
+
+.scenario-selection select{
+    padding: 0.5em;
+    margin-bottom: 1em;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+.scenario-selection button{
+    padding: 0.7em;
+    background: #4CAF50;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.scenario-selection button:hover{
+    background: #45a049;
+}
+
+.scenario-container{
+    max-width: 900px;
+    margin: 2em auto;
+    padding: 1em;
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.scenario-container h2{
+    margin-top: 0;
 }
 
 .chat-container {
+    display: flex;
+    flex-direction: column;
     padding: 1em;
-    background: #eee;
+    background: #eef;
     border-radius: 6px;
+    max-width: 800px;
+    margin: 2em auto;
 }
 
 .chat-turn {
     margin-bottom: 1em;
     border-bottom: 1px solid #ccc;
     padding-bottom: 0.5em;
+    display: flex;
+    flex-direction: column;
 }
 
 .turn-info {
@@ -55,16 +143,70 @@ header a {
     border-radius: 10px;
     padding: 0.8em;
     margin: 0.5em 0;
+    max-width: 60%;
+    word-wrap: break-word;
 }
 
 .chat-bubble.sender {
-    background: #fee;
+    background: #ffdede;
+    align-self: flex-start;  /* 왼쪽 */
 }
 
 .chat-bubble.receiver {
-    background: #eef;
+    background: #d0e7ff;
+    align-self: flex-end;    /* 오른쪽 */
 }
+
 
 .agent-name {
     font-weight: bold;
+}
+
+.bubble-content {
+    white-space: pre-line;
+}
+
+
+.memory-selection {
+    max-width: 800px;
+    margin: 2em auto;
+    padding: 1em;
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.agent-column {
+    width: 50%;
+    padding: 1em;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.memory-container {
+    display: flex;  /* 2등분 */
+    flex-direction: row;
+    justify-content: space-between;
+    max-width: 1200px;
+    margin: 2em auto;
+    background: #fff;
+}
+
+.agent-column h3 {
+    margin-top: 0;
+    border-bottom: 2px solid #ccc;
+    padding-bottom: 0.5em;
+}
+
+.section-block {
+    margin-bottom: 1.5em;
+}
+
+.section-block h4 {
+    margin-bottom: 0.5em;
+}
+
+.section-block ul {
+    list-style-type: disc;
+    margin-left: 1.5em;
 }

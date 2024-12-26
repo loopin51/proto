@@ -107,7 +107,7 @@ def summarize_memory(content, context):
     """
     try:
         # Generate the prompt using the centralized template
-        prompt = summarize_memory_prompt(content, context)
+        prompt = get_summarize_memory_prompt(content, context)
         
         # Query the LLM
         response = query_llm(prompt)

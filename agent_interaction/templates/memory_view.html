@@ -1,35 +1,125 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ agent_name }}'s Memory</title>
-    <link rel="stylesheet" href="/static/styles.css">
+  <meta charset="UTF-8">
+  <title>메모리 뷰</title>
+  <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-    <header>
-        <h1>{{ agent_name }}'s Memory</h1>
-        <a href="/">Back to Home</a>
-    </header>
-    <section>
-        <h2>Short-Term Memories</h2>
-        <ul>
-            {% for memory, importance in short_term_memories %}
-                <li>{{ memory }} (Importance: {{ importance }})</li>
+  <header>
+    <h1>메모리 뷰 (두 에이전트 동시 확인)</h1>
+    <a href="/">홈으로</a>
+  </header>
+
+  <section class="memory-selection">
+    <h2>시나리오 선택</h2>
+    <form method="POST" action="/memory_view">
+      <label for="scenario_id">시나리오:</label>
+      <select name="scenario_id" id="scenario_id" required>
+        {% for sid, data in scenarios.items() %}
+          <option value="{{ sid }}" {% if chosen_scenario == sid %}selected{% endif %}>
+            시나리오 {{ sid }} - {{ data.description }}
+          </option>
+        {% endfor %}
+      </select>
+      <button type="submit">조회</button>
+    </form>
+  </section>
+
+  <hr/>
+
+  {% if chosen_scenario %}
+    <h2>선택된 시나리오: {{ chosen_scenario }} ({{ scenarios[chosen_scenario].description }})</h2>
+  {% endif %}
+
+  <div class="memory-container">
+    <div class="agent-column">
+      <h3>Agent1: {{ agent1_name }}</h3>
+
+      {% if data_agent1 %}
+        <div class="section-block">
+          <h4>단기 메모리 (STM)</h4>
+          <ul>
+            {% for stm in data_agent1.short_term_memories %}
+              <li>{{ stm[0] }} (중요도: {{ stm[1] }})</li>
             {% endfor %}
-        </ul>
-        <h2>Long-Term Memories</h2>
-        <ul>
-            {% for memory, importance in long_term_memories %}
-                <li>{{ memory }} (Importance: {{ importance }})</li>
+          </ul>
+        </div>
+        
+        <div class="section-block">
+          <h4>장기 메모리 (LTM)</h4>
+          <ul>
+            {% for ltm in data_agent1.long_term_memories %}
+              <li>{{ ltm[0] }} (중요도: {{ ltm[1] }}, Reflection: {{ ltm[2] }})</li>
             {% endfor %}
-        </ul>
-        <h2>Current Emotions</h2>
-        <ul>
-            {% for emotion, value in emotions.items() %}
-                <li>{{ emotion }}: {{ value }}</li>
+          </ul>
+        </div>
+
+        <div class="section-block">
+          <h4>감정 상태 (Emotion)</h4>
+          <ul>
+            {% for emotion, value in data_agent1.emotions.items() %}
+              <li>{{ emotion }}: {{ value }}</li>
             {% endfor %}
-        </ul>
-    </section>
+          </ul>
+        </div>
+
+        <div class="section-block">
+          <h4>사고 과정 (Thought Processes)</h4>
+          <ul>
+            {% for thought in data_agent1.thought_processes %}
+              <li>{{ thought }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% else %}
+        <p>Agent1 데이터가 없습니다.</p>
+      {% endif %}
+    </div>
+
+    <div class="agent-column">
+      <h3>Agent2: {{ agent2_name }}</h3>
+
+      {% if data_agent2 %}
+        <div class="section-block">
+          <h4>단기 메모리 (STM)</h4>
+          <ul>
+            {% for stm in data_agent2.short_term_memories %}
+              <li>{{ stm[0] }} (중요도: {{ stm[1] }})</li>
+            {% endfor %}
+          </ul>
+        </div>
+        
+        <div class="section-block">
+          <h4>장기 메모리 (LTM)</h4>
+          <ul>
+            {% for ltm in data_agent2.long_term_memories %}
+              <li>{{ ltm[0] }} (중요도: {{ ltm[1] }}, Reflection: {{ ltm[2] }})</li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <div class="section-block">
+          <h4>감정 상태 (Emotion)</h4>
+          <ul>
+            {% for emotion, value in data_agent2.emotions.items() %}
+              <li>{{ emotion }}: {{ value }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <div class="section-block">
+          <h4>사고 과정 (Thought Processes)</h4>
+          <ul>
+            {% for thought in data_agent2.thought_processes %}
+              <li>{{ thought }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% else %}
+        <p>Agent2 데이터가 없습니다.</p>
+      {% endif %}
+    </div>
+  </div>
 </body>
 </html>

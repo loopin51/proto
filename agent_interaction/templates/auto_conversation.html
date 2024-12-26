@@ -1,61 +1,56 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>Auto Conversation</title>
-  <link rel="stylesheet" href="/static/styles.css" />
+  <title>자동 대화</title>
+  <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
   <header>
-    <h1>Auto Conversation (Scenario-based)</h1>
-    <a href="/">Home</a>
+    <h1>자동 대화 (DM 채팅)</h1>
+    <a href="/">홈으로</a>
   </header>
 
-  <section class="scenario-section">
-    <!-- 시나리오 선택 폼 (POST) -->
+  <section class="scenario-selection">
+    <h2>시나리오 선택</h2>
     <form method="POST" action="/auto_conversation">
-      <label for="scenario_id">Choose a scenario:</label>
-      <select name="scenario_id" id="scenario_id">
+      <label for="scenario_id">시나리오:</label>
+      <select name="scenario_id" id="scenario_id" required>
         {% for sid, data in scenarios.items() %}
-          <option value="{{ sid }}">Scenario {{ sid }} - {{ data['description'] }}</option>
+          <option value="{{ sid }}" {% if chosen_scenario == sid %}selected{% endif %}>
+            시나리오 {{ sid }} - {{ data.description }}
+          </option>
         {% endfor %}
       </select>
-      <button type="submit">Generate Conversation</button>
+      <button type="submit">대화 생성 / 보기</button>
     </form>
   </section>
 
   <hr/>
 
-  {% if scenario_results %}
-    <div class="scenario-container">
-      {% for scenario in scenario_results %}
-        <div class="scenario-block">
-          <h2>Scenario {{ scenario.scenario_id }}</h2>
-          <p><strong>Description:</strong> {{ scenario.description }}</p>
-          <p><strong>DB Path:</strong> {{ scenario.db_path }}</p>
-
-          <div class="chat-container">
-            {% for log_item in scenario.logs %}
-              <div class="chat-turn">
-                <div class="turn-info">Turn {{ log_item.turn }}</div>
-                <!-- Sender bubble -->
-                <div class="chat-bubble sender">
-                  <div class="agent-name">{{ log_item.sender }} says:</div>
-                  <div class="bubble-content">{{ log_item.message }}</div>
-                </div>
-                <!-- Receiver bubble -->
-                <div class="chat-bubble receiver">
-                  <div class="agent-name">{{ log_item.receiver }} responds:</div>
-                  <div class="bubble-content">{{ log_item.response }}</div>
-                </div>
-              </div>
-            {% endfor %}
-          </div>
+  {% if scenario_logs %}
+    <div class="chat-container">
+      {% for item in scenario_logs %}
+        <div class="chat-turn">
+          <div class="turn-info">턴 {{ item.turn }}</div>
+          {% if item.speaker == agent1_name%}
+            <!-- 왼쪽 버블 -->
+            <div class="chat-bubble sender">
+              <strong>{{ item.speaker }}:</strong>
+              <p>{{ item.message }}</p>
+            </div>
+          {% else %}
+            <!-- 오른쪽 버블 -->
+            <div class="chat-bubble receiver">
+              <strong>{{ item.speaker }}:</strong>
+              <p>{{ item.message }}</p>
+            </div>
+          {% endif %}
         </div>
       {% endfor %}
     </div>
-  {% else %}
-    <p>No conversation logs yet. Select a scenario and click "Generate Conversation".</p>
+  {% elif chosen_scenario %}
+    <p>해당 시나리오에 대한 대화 기록이 없습니다.</p>
   {% endif %}
 </body>
 </html>
