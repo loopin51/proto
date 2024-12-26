@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Auto Conversation</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+    <header>
+        <h1>Auto Conversation</h1>
+        <a href="/">Back to Home</a>
+    </header>
+
+    <section class="chat-container">
+        <!-- 반복문으로 대화 표시 -->
+        {% for item in logs %}
+            <div class="chat-turn">
+                <!-- Turn number -->
+                <div class="turn-info">Turn {{ item.turn }}</div>
+
+                <!-- Sender bubble -->
+                <div class="chat-bubble sender">
+                    <div class="agent-name">{{ item.sender }} says:</div>
+                    <div class="bubble-content">{{ item.message }}</div>
+                </div>
+
+                <!-- Receiver bubble -->
+                <div class="chat-bubble receiver">
+                    <div class="agent-name">{{ item.receiver }} responds:</div>
+                    <div class="bubble-content">{{ item.response }}</div>
+                </div>
+            </div>
+        {% endfor %}
+    </section>
+</body>
+</html>

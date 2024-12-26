@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ agent_name }}'s Memory</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <header>
+        <h1>{{ agent_name }}'s Memory</h1>
+        <a href="/">Back to Home</a>
+    </header>
+    <section>
+        <h2>Short-Term Memories</h2>
+        <ul>
+            {% for memory, importance in short_term_memories %}
+                <li>{{ memory }} (Importance: {{ importance }})</li>
+            {% endfor %}
+        </ul>
+        <h2>Long-Term Memories</h2>
+        <ul>
+            {% for memory, importance in long_term_memories %}
+                <li>{{ memory }} (Importance: {{ importance }})</li>
+            {% endfor %}
+        </ul>
+        <h2>Current Emotions</h2>
+        <ul>
+            {% for emotion, value in emotions.items() %}
+                <li>{{ emotion }}: {{ value }}</li>
+            {% endfor %}
+        </ul>
+    </section>
+</body>
+</html>

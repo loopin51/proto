@@ -10,11 +10,11 @@ from utils.emotion_methods import retrieve_current_emotions
 
 TEST_DB_PATH = "test_agents.db"
 
-def setup_database():
+def setup_database(database_path=TEST_DB_PATH):
     """
     Create the required tables for testing agent conversation.
     """
-    conn = sqlite3.connect(TEST_DB_PATH)
+    conn = sqlite3.connect(database_path)
     cursor = conn.cursor()
 
     # conversations 테이블
@@ -46,7 +46,8 @@ def setup_database():
             content TEXT NOT NULL,
             importance REAL NOT NULL,
             last_accessed DATETIME DEFAULT CURRENT_TIMESTAMP,
-            reflection_type TEXT
+            reflection_type TEXT,
+            reference_count INTEGER DEFAULT 0
         );
     """)
 
@@ -70,15 +71,15 @@ def setup_database():
     conn.commit()
     conn.close()
 
-def populate_initial_data():
+def populate_initial_data(database_path=TEST_DB_PATH):
     """
     Populate the database with initial data for a more dramatic emotional scenario.
     """
-    conn = sqlite3.connect(TEST_DB_PATH)
+    conn = sqlite3.connect(database_path)
     cursor = conn.cursor()
 
     # 감정 DB 초기화
-    init_emotion_db(TEST_DB_PATH)
+    init_emotion_db(database_path)
 
     # 에이전트 목록
     agents = ["agent_1", "agent_2"]
