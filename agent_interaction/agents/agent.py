@@ -5,7 +5,7 @@ class Agent:
     Agent class to define individual agents with their persona, name, and memory-related methods.
     """
 
-    def __init__(self, name, persona):
+    def __init__(self, name, persona, partner_name="Anonymous"):
         """
         Initialize an Agent with a name and persona.
         Args:
@@ -14,6 +14,7 @@ class Agent:
         """
         self.name = name
         self.persona = persona
+        self.partner_name = partner_name
 
     def get_memory_context(self, database_path):
         """
@@ -23,7 +24,7 @@ class Agent:
         Returns:
             str: Combined short-term and long-term memory.
         """
-        from utils.agent_methods import retrieve_from_short_term_memory, retrieve_from_long_term_memory
+        from utils.general_methods import retrieve_from_short_term_memory, retrieve_from_long_term_memory
 
         short_term_memories = retrieve_from_short_term_memory(database_path, self.name)
         long_term_memories = retrieve_from_long_term_memory(database_path, self.name)
@@ -48,7 +49,7 @@ class Agent:
         Returns:
             str: Reflection generated from memory.
         """
-        from agent_interaction.utils.agent_methods import generate_reflection
+        from agent_interaction.utils.general_methods import generate_reflection
 
         try:
             # Generate reflection using the agent's name and the specified reflection type

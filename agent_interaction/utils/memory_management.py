@@ -1,10 +1,26 @@
 import sqlite3
-from utils.llm_connector import query_llm
-from utils.prompt_templates import *
-from utils.context_methods import *
-from utils.agent_methods import *
-from utils.importance_scoring import * 
-#from utils.agent_methods import debug_log, update_reference_count
+from .llm_connector import query_llm
+from .prompt_templates import *
+from .context_methods import *
+from .importance_scoring import *
+from contextlib import contextmanager 
+
+@contextmanager
+def db_connection(database_path):
+    """
+    Context manager for SQLite database connection.
+    
+    Args:
+        database_path (str): Path to the SQLite database file.
+    
+    Yields:
+        sqlite3.Connection: SQLite connection object.
+    """
+    conn = sqlite3.connect(database_path, check_same_thread=False)
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 def debug_log(message):
     """
@@ -449,3 +465,48 @@ def manage_memories(database_path, agent_name, new_event=None):
     except Exception as e:
         print(f"Error in manage_memories: {e}")
         raise
+
+def retrieve_conversation_history(database_path, agent1_name, agent2_name, limit=10):
+    """
+    Retrieve the most recent conversation history between two agents.
+
+    Args:
+        database_path (str): Path to the SQLite database file.
+        agent1_name (str): Name of the first agent.
+        agent2_name (str): Name of the second agent.
+        limit (int): Number of recent messages to retrieve.
+
+    Returns:
+        list of tuples: Each tuple contains (speaker, message).
+    """
+    with db_connection(database_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT speaker, message FROM conversations
+            WHERE speaker IN (?, ?)
+            ORDER BY turn DESC
+            LIMIT ?
+        """, (agent1_name, agent2_name, limit))
+        rows = cursor.fetchall()
+    
+    # Reverse to have oldest first
+    return rows[::-1]
+
+def format_conversation_history(conversation_history):
+    """
+    Format the conversation history into a readable string.
+
+    Args:
+        conversation_history (list of tuples): Each tuple contains (speaker, message).
+
+    Returns:
+        str: Formatted conversation history.
+    """
+    if not conversation_history:
+        return "(No previous conversation history)\n"
+    
+    history_text = "=== Conversation History ===\n"
+    for speaker, message in conversation_history:
+        history_text += f"{speaker}: {message}\n"
+    return history_text.strip()
+

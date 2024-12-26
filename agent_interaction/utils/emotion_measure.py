@@ -3,21 +3,16 @@ import random
 from contextlib import contextmanager
 
 # 기존에 구현한 로컬 Llama 모델 호출 함수 (예시)
-from llm_connector import query_llm
+from .llm_connector import query_llm_dict
 
 # 기존에 구현된 함수들: STM/LTM 조회 + 감정 조회
-from agent_methods import retrieve_from_short_term_memory, retrieve_from_long_term_memory
-from emotion_methods import (
+from .general_methods import retrieve_from_short_term_memory, retrieve_from_long_term_memory
+from .emotion_methods import (
     db_connection,
     retrieve_current_emotions,
     adjust_emotions,  # 필요시
     # etc...
 )
-
-"""
-아래 코드는 이전에 제시한 'emotion_llama_measure.py'를 기반으로 하되,
-compose_scenario_text_for_llama(agent_id)'를 수정하여 STM + LTM + 현재 감정상태를 포함합니다.
-"""
 
 ##################################
 # 1. Plutchik 8개 감정 항목 (EmotionBench 스타일의 1~5 척도 질문)
@@ -50,19 +45,20 @@ Please only output the numbers for each emotion, in the order I present them to 
 ##################################
 # 2. 시나리오(Scenario) 구성: STM + LTM + 현재 감정
 ##################################
-def compose_scenario_text_for_llama(agent_id):
+def compose_scenario_text_for_llama(database_path, agent_name):
     """
     에이전트의 STM, LTM, 그리고 현재 감정 상태를 모두 모아서
     'Scenario' 텍스트로 구성.
     """
-
     # 1) 단기 기억(STM) 조회
-    stm = retrieve_from_short_term_memory(agent_id, limit=5)  # 예: 최근 5개
+    stm = retrieve_from_short_term_memory(database_path, agent_name)  # 최근 5개
+    
     # 2) 장기 기억(LTM) 조회
-    ltm = retrieve_from_long_term_memory(agent_id, limit=5)   # 예: 중요도 높은 5개
+    ltm = retrieve_from_long_term_memory(database_path, agent_name)   # 중요도 높은 5개
+    
     # 3) 현재 감정 상태 조회
-    current = retrieve_current_emotions(agent_id)
-
+    current = retrieve_current_emotions(agent_name)  # agent_name 기반으로 감정 조회
+    
     # 시나리오 문자열 구성
     scenario_text = "=== Short-Term Memories ===\n"
     if stm:
@@ -91,13 +87,13 @@ def compose_scenario_text_for_llama(agent_id):
 ##################################
 # 3. LLM 질의 함수
 ##################################
-def call_llama_emotion(agent_id):
+def call_llama_emotion(database_path, agent_name):
     """
     1) 시나리오 텍스트(STM+LTM+현재감정) 생성
     2) Plutchik 8개 감정에 대해 1~5 범위로 답하도록 Llama 호출
     3) 응답 반환
     """
-    scenario_text = compose_scenario_text_for_llama(agent_id)
+    scenario_text = compose_scenario_text_for_llama(database_path, agent_name)
 
     # 질문 순서 무작위화
     questions_order = list(plutchik_emotions_dic.keys())
@@ -121,9 +117,8 @@ def call_llama_emotion(agent_id):
         }
     ]
 
-    # 로컬 Llama 모델 호출 (가상의 llama_chat 함수)
-    response_text = query_llm(messages)
-    
+    # 로컬 Llama 모델 호출
+    response_text = query_llm_dict(messages)
     return response_text, questions_order
 
 ##################################
@@ -143,6 +138,7 @@ def parse_llama_emotion_response(response_text, questions_order):
     # zip & 정렬
     zipped = list(zip(questions_order_int, scores))
     zipped_sorted = sorted(zipped, key=lambda x: x[0])  # 1->Joy,2->Trust,..
+
     # 최종 8개 스코어
     sorted_scores = [score for _, score in zipped_sorted]
     return sorted_scores
@@ -150,15 +146,15 @@ def parse_llama_emotion_response(response_text, questions_order):
 ##################################
 # 5. 최종 측정 & 업데이트
 ##################################
-def measure_and_update_emotions(agent_id):
+def measure_and_update_emotions(database_path, agent_name):
     """
     1) call_llama_emotion -> 1~5 스코어 획득
     2) parse_llama_emotion_response -> 8개 감정 스코어
     3) 1~5 -> 0.0~1.0 스케일링
-    4) DB에 새로운 감정 상태 저장 (혹은 update_emotion 로직으로 반영)
-    5) adjust_emotions() 등 호출
+    4) DB에 새로운 감정 상태 저장
+    5) adjust_emotions() 호출
     """
-    response_text, questions_order = call_llama_emotion(agent_id)
+    response_text, questions_order = call_llama_emotion(database_path, agent_name)
     scores_1to5 = parse_llama_emotion_response(response_text, questions_order)
 
     if len(scores_1to5) != 8:
@@ -171,8 +167,7 @@ def measure_and_update_emotions(agent_id):
 
     joy, trust, fear, surprise, sadness, disgust, anger, anticipation = scaled
 
-    # 이전코드와 호환: emotion_states 테이블에 직접 insert
-    # (1) DB에 한 번에 저장
+    # DB에 직접 insert (emotions_methods.py에 있는 "DB에 저장" 로직과 유사)
     with db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -181,15 +176,15 @@ def measure_and_update_emotions(agent_id):
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            agent_id,
+            agent_name,  # agent_id 대신 agent_name 사용
             joy, trust, fear, surprise, sadness, disgust, anger, anticipation
         ))
         conn.commit()
 
-    # (2) 옵션: adjust_emotions 호출 (슬픔이 너무 높은 경우 기쁨을 증가시키는 등)
-    adjust_emotions(agent_id)
+    # adjust_emotions 호출
+    adjust_emotions(agent_name)
 
-    # 최종 감정 상태
+    # 최종 감정 상태 반환
     return {
         "joy": joy,
         "trust": trust,
@@ -202,9 +197,13 @@ def measure_and_update_emotions(agent_id):
     }
 
 ##################################
-# 테스트
+# TEST
 ##################################
 if __name__ == "__main__":
-    agent_id = 1
-    final_emotion = measure_and_update_emotions(agent_id)
+    # 실제로는 database_path와 agent_name을 설정해야 함
+    database_path = "path/to/emotion_states.db"
+    agent_name = "agent_1"
+
+    # 감정 측정 및 업데이트
+    final_emotion = measure_and_update_emotions(database_path, agent_name)
     print("Final emotion state (scaled 0~1):", final_emotion)

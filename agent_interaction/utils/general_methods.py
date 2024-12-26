@@ -1,16 +1,14 @@
 import sqlite3
 from datetime import datetime
 import re
-from utils.llm_connector import query_llm
+from .llm_connector import query_llm
 import os
 from sentence_transformers import SentenceTransformer, util
-from utils.prompt_templates import *
-from utils.importance_scoring import *
-from utils.memory_management import *
+from .prompt_templates import *
+from .importance_scoring import *
+from .memory_management import *
 
 model = SentenceTransformer('all-MiniLM-L6-v2') #model used for context similarity calculation
-
-
 
 # 데이터베이스 파일 경로 생성 함수
 def get_database_path():
@@ -208,15 +206,6 @@ def agent_conversation(database_path, agent1, agent2, message, conversation_turn
 
         debug_log(f"{agent2.name} answered : {speech}")
 
-
-        # Calculate importance and manage memories
-        importance_score = calculate_importance(
-            message,
-            memory_context,
-            conversation_turn,
-            0,  # Placeholder for frequency
-            0   # Placeholder for sentiment
-        )
         add_to_short_term_memory(database_path, {"content": speech, "agent_name": agent2.name}, context) #agent2.name을 전달하는게 맞나?
         promote_to_long_term_memory(database_path, agent2.name)
 

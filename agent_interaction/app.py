@@ -4,7 +4,7 @@ from datetime import datetime
 from flask import Flask, render_template, request, jsonify
 from threading import Thread, Lock
 from agents.agent import Agent
-from utils.agent_methods import *
+from utils.general_methods import *
 import time
 import signal
 import sys

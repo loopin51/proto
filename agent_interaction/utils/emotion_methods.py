@@ -1,54 +1,83 @@
 # emotions_methods.py
-
+import os
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import datetime
+from textblob import TextBlob
+
+# 데이터베이스 파일 경로 생성 함수
+def get_emo_database_path():
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return os.path.join("database", f"memory_system_{timestamp}.db")
+
+# 전역 데이터베이스 경로
+emo_database_path = None
+
+def set_emo_database_path(path):
+    global emo_database_path
+    emo_database_path = path
 
 ###################################
-# DB 연결 관리 함수 (SQLite용)
+# Database Connection Utility
 ###################################
+
 @contextmanager
-def db_connection():
-    # 로컬 파일 기반 SQLite DB 사용 (emotion_states.db)
-    conn = sqlite3.connect('emotion_states.db')
+def db_connection(database_path):
+    """
+    Context manager for SQLite database connection.
+    
+    Args:
+        database_path (str): Path to the SQLite database file.
+    
+    Yields:
+        sqlite3.Connection: SQLite connection object.
+    """
+    conn = sqlite3.connect(database_path, check_same_thread=False)
     try:
         yield conn
     finally:
         conn.close()
 
 ###################################
-# 테이블 생성 함수
+# Database Initialization
 ###################################
-def init_emotion_db():
+
+def init_emotion_db(database_path):
     """
-    SQLite에서 감정 상태 저장용 테이블 생성
+    Initialize the emotion_states table in the SQLite database if it doesn't exist.
+    
+    Args:
+        database_path (str): Path to the SQLite database file.
     """
-    with db_connection() as conn:
+    with db_connection(database_path) as conn:
         cursor = conn.cursor()
-        # SQLite에서는 REAL 타입 사용, timestamp는 DATETIME
         cursor.execute("""
-        CREATE TABLE IF NOT EXISTS emotion_states (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            agent_id INTEGER NOT NULL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            joy REAL NOT NULL,
-            trust REAL NOT NULL,
-            fear REAL NOT NULL,
-            surprise REAL NOT NULL,
-            sadness REAL NOT NULL,
-            disgust REAL NOT NULL,
-            anger REAL NOT NULL,
-            anticipation REAL NOT NULL
-        );
+            CREATE TABLE IF NOT EXISTS emotion_states (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                agent_name TEXT NOT NULL,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                joy REAL NOT NULL,
+                trust REAL NOT NULL,
+                fear REAL NOT NULL,
+                surprise REAL NOT NULL,
+                sadness REAL NOT NULL,
+                disgust REAL NOT NULL,
+                anger REAL NOT NULL,
+                anticipation REAL NOT NULL
+            );
         """)
         conn.commit()
 
 ###################################
-# 감정 벡터 유틸리티
+# Emotion Vector Utilities
 ###################################
+
 def empty_emotion_vector():
     """
-    모든 감정을 0으로 초기화한 벡터 반환
+    Returns an empty emotion vector with all emotions set to 0.0.
+    
+    Returns:
+        dict: Dictionary with emotions as keys and 0.0 as values.
     """
     return {
         'joy': 0.0,
@@ -63,202 +92,206 @@ def empty_emotion_vector():
 
 def clamp_emotion_value(val):
     """
-    감정 강도 값을 0~1 범위로 제한
+    Clamps the emotion value between 0.0 and 1.0.
+    
+    Args:
+        val (float): Emotion value to clamp.
+    
+    Returns:
+        float: Clamped emotion value.
     """
     return max(0.0, min(1.0, val))
 
-def create_event_emotion_vector(joy=0.0, trust=0.0, fear=0.0, surprise=0.0,
-                                sadness=0.0, disgust=0.0, anger=0.0, anticipation=0.0):
-    """
-    이벤트로 인한 감정 변화나 목표 감정 상태를 쉽게 정의하기 위한 헬퍼.
-    """
-    vec = {
-        'joy': clamp_emotion_value(joy),
-        'trust': clamp_emotion_value(trust),
-        'fear': clamp_emotion_value(fear),
-        'surprise': clamp_emotion_value(surprise),
-        'sadness': clamp_emotion_value(sadness),
-        'disgust': clamp_emotion_value(disgust),
-        'anger': clamp_emotion_value(anger),
-        'anticipation': clamp_emotion_value(anticipation)
-    }
-    return vec
+###################################
+# Emotion Retrieval Functions
+###################################
 
-###################################
-# 감정 상태 저장 함수
-###################################
-def store_emotion_state(agent_id, emotion_vector):
+def retrieve_current_emotions(database_path, agent_name, recent_n=10):
     """
-    현재 감정 상태(8차원 벡터)를 DB에 저장
+    Retrieve the average of the most recent N emotion states for the specified agent.
+    
+    Args:
+        database_path (str): Path to the SQLite database file.
+        agent_name (str): Name of the agent.
+        recent_n (int): Number of recent emotion states to average.
+    
+    Returns:
+        dict: Dictionary with averaged emotions.
     """
-    with db_connection() as conn:
+    with db_connection(database_path) as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO emotion_states (agent_id, joy, trust, fear, surprise, sadness, disgust, anger, anticipation)
+            SELECT joy, trust, fear, surprise, sadness, disgust, anger, anticipation
+            FROM emotion_states
+            WHERE agent_name = ?
+            ORDER BY timestamp DESC
+            LIMIT ?
+        """, (agent_name, recent_n))
+        rows = cursor.fetchall()
+    
+    if not rows:
+        return empty_emotion_vector()
+    
+    avg_emotions = empty_emotion_vector()
+    for row in rows:
+        for i, emotion in enumerate(avg_emotions.keys()):
+            avg_emotions[emotion] += row[i]
+    
+    for emotion in avg_emotions:
+        avg_emotions[emotion] /= len(rows)
+    
+    return avg_emotions
+
+###################################
+# Emotion Update Functions
+###################################
+
+def update_emotion(database_path, agent_name, event, sentiment_score):
+    """
+    Update the emotion state based on an event and its sentiment score.
+    
+    Args:
+        database_path (str): Path to the SQLite database file.
+        agent_name (str): Name of the agent.
+        event (str): Type of event ('positive_interaction', 'negative_interaction', 'neutral_interaction').
+        sentiment_score (float): Sentiment score between -1 and +1.
+    """
+    emotion_map = {
+        'positive_interaction': 'joy',
+        'negative_interaction': 'sadness',
+        'neutral_interaction': 'trust'
+    }
+    
+    # Map event to emotion
+    emotion = emotion_map.get(event, 'anticipation')  # Default to 'anticipation' if event not found
+    intensity = clamp_emotion_value((sentiment_score + 1) / 2)  # Scale from -1~1 to 0~1
+    
+    # Retrieve current emotions
+    current_emotions = retrieve_current_emotions(database_path, agent_name)
+    updated_emotions = current_emotions.copy()
+    updated_emotions[emotion] = intensity  # Update the specific emotion
+    
+    # Insert the new emotion state into the database
+    with db_connection(database_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO emotion_states (agent_name, joy, trust, fear, surprise, sadness, disgust, anger, anticipation)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            agent_id,
-            emotion_vector['joy'],
-            emotion_vector['trust'],
-            emotion_vector['fear'],
-            emotion_vector['surprise'],
-            emotion_vector['sadness'],
-            emotion_vector['disgust'],
-            emotion_vector['anger'],
-            emotion_vector['anticipation']
+            agent_name,
+            updated_emotions['joy'],
+            updated_emotions['trust'],
+            updated_emotions['fear'],
+            updated_emotions['surprise'],
+            updated_emotions['sadness'],
+            updated_emotions['disgust'],
+            updated_emotions['anger'],
+            updated_emotions['anticipation']
         ))
         conn.commit()
 
-###################################
-# 감정 조회 함수
-###################################
-def retrieve_current_emotion(agent_id, recent_n=10):
+def adjust_emotions(database_path, agent_name):
     """
-    최근 N개의 감정 상태를 평균내어 현재 감정 상태 반환.
+    Adjust emotions so that very high or very low values move slightly toward 0.5,
+    making strong emotions 'cool down' a bit.
+
+    로직 요약:
+      - 감정값이 0.7보다 크면 0.5 쪽으로 조금 감소 (겹치는 부분 만큼 줄임)
+      - 0.0 ~ 0.7 사이면 조정하지 않음 (자연스럽게 유지)
+
+    Args:
+        database_path (str): Path to the SQLite database file.
+        agent_name (str): Name of the agent.
     """
-    with db_connection() as conn:
+    # alpha: 감정이 중간값(0.5)에 접근하는 정도 (0~1)
+    alpha = 0.2
+
+    # 1) 현재 감정 상태 조회
+    emotions = retrieve_current_emotions(database_path, agent_name)
+    new_emotions = emotions.copy()
+
+    for emotion_name, val in emotions.items():
+        if val > 0.7:
+            # 너무 큰 감정 => 0.5 쪽으로 조금씩 수렴
+            # new_val = val - (val-0.5)*alpha
+            #   = val*(1-alpha) + 0.5*alpha
+            new_val = val - (val - 0.5) * alpha
+        else:
+            # 0.3 ~ 0.7 사이라면 그대로 둠
+            new_val = val
+
+        new_val = clamp_emotion_value(new_val)
+        new_emotions[emotion_name] = new_val
+
+    # 2) DB에 새 감정 상태를 반영
+    with db_connection(database_path) as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT joy, trust, fear, surprise, sadness, disgust, anger, anticipation
-            FROM emotion_states
-            WHERE agent_id = ?
-            ORDER BY timestamp DESC
-            LIMIT ?
-        """, (agent_id, recent_n))
-        rows = cursor.fetchall()
+            INSERT INTO emotion_states
+            (agent_name, joy, trust, fear, surprise, sadness, disgust, anger, anticipation)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            agent_name,
+            new_emotions['joy'],
+            new_emotions['trust'],
+            new_emotions['fear'],
+            new_emotions['surprise'],
+            new_emotions['sadness'],
+            new_emotions['disgust'],
+            new_emotions['anger'],
+            new_emotions['anticipation']
+        ))
+        conn.commit()
 
-    if not rows:
-        return empty_emotion_vector()
+def analyze_sentiment(content):
+        """
+        Perform sentiment analysis on the memory content.
+        Args:
+            content (str): Text to analyze.
 
-    avg_emotion = empty_emotion_vector()
-    count = len(rows)
-    for row in rows:
-        for i, emotion_name in enumerate(avg_emotion.keys()):
-            avg_emotion[emotion_name] += row[i]
-    for e in avg_emotion:
-        avg_emotion[e] /= count
-        avg_emotion[e] = clamp_emotion_value(avg_emotion[e])
-
-    return avg_emotion
-
-def recall_past_emotions(agent_id, timeframe_hours=1):
-    """
-    특정 시간(timeframe_hours) 동안의 감정 상태 평균 조회
-    예: 지난 1시간 동안의 감정 평균
-    """
-    cutoff = datetime.now() - timedelta(hours=timeframe_hours)
-    cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
-
-    with db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute(f"""
-            SELECT joy, trust, fear, surprise, sadness, disgust, anger, anticipation
-            FROM emotion_states
-            WHERE agent_id = ? AND timestamp > ?
-            ORDER BY timestamp DESC
-        """, (agent_id, cutoff_str))
-        rows = cursor.fetchall()
-
-    if not rows:
-        return empty_emotion_vector()
-
-    avg_emotion = empty_emotion_vector()
-    count = len(rows)
-    for row in rows:
-        for i, emotion_name in enumerate(avg_emotion.keys()):
-            avg_emotion[emotion_name] += row[i]
-    for e in avg_emotion:
-        avg_emotion[e] /= count
-        avg_emotion[e] = clamp_emotion_value(avg_emotion[e])
-
-    return avg_emotion
-
+        Returns:
+            float: Sentiment polarity (-1 to 1).
+        """
+        analysis = TextBlob(content)
+        return analysis.sentiment.polarity
 ###################################
-# 감정 업데이트 로직
+# Testing and Example Usage
 ###################################
-def update_emotion_state(agent_id, event_emotion_vector):
-    """
-    현재 감정을 조회한 후, 이벤트 감정 벡터를 반영하여 새로운 감정 상태 생성
-    여기서는 단순히 현재 평균 감정과 이벤트 벡터를 평균하는 방식으로 예시
-    """
-    current = retrieve_current_emotion(agent_id)
-    new_emotion = empty_emotion_vector()
 
-    for e in new_emotion:
-        val = (current[e] + event_emotion_vector[e]) / 2.0
-        new_emotion[e] = clamp_emotion_value(val)
-
-    store_emotion_state(agent_id, new_emotion)
-
-###################################
-# 감정 조정 함수
-###################################
-def adjust_emotions(agent_id):
-    """
-    현재 감정을 조회하고 특정 조건에 따라 조정.
-    예: sadness가 0.8 이상이면 joy를 0.1 증가, sadness를 0.1 감소
-    """
-    current = retrieve_current_emotion(agent_id)
-    sadness = current['sadness']
-
-    if sadness > 0.8:
-        current['joy'] = clamp_emotion_value(current['joy'] + 0.1)
-        current['sadness'] = clamp_emotion_value(current['sadness'] - 0.1)
-        # 변경 사항 DB 반영
-        store_emotion_state(agent_id, current)
-
-###################################
-# 테스트용 감정 분석 함수 예제 (간단)
-###################################
-def analyze_sentiment(text):
-    """
-    매우 단순한 감정 분석:
-    긍정 단어 -> 점수 상승, 부정 단어 -> 점수 하락
-    최종 -1~1 범위 클램핑
-    """
-    positive_words = ["good", "great", "happy", "excellent", "joy", "love"]
-    negative_words = ["bad", "sad", "terrible", "awful", "hate", "angry"]
-    
-    content_lower = text.lower()
-    score = 0
-    for w in positive_words:
-        if w in content_lower:
-            score += 0.5
-    for w in negative_words:
-        if w in content_lower:
-            score -= 0.5
-    return max(-1, min(1, score))
-
-###################################
-# 메인 테스트 예시
-###################################
 if __name__ == "__main__":
-    init_emotion_db()
-    agent_id = 1
-
-    # 초기 감정 상태 (모두 0) 저장
-    store_emotion_state(agent_id, empty_emotion_vector())
-
-    # 사용자(상대 에이전트) 발화 예제
-    user_input = "I am so happy to see you!"
-    sentiment_score = analyze_sentiment(user_input)
-
-    # 이벤트 벡터 생성: 긍정적 감정이므로 joy 증가
-    if sentiment_score > 0:
-        event_vector = create_event_emotion_vector(joy=0.8)
-    elif sentiment_score < 0:
-        event_vector = create_event_emotion_vector(sadness=0.5)
-    else:
-        event_vector = create_event_emotion_vector(trust=0.2)
-
-    # 감정 업데이트
-    update_emotion_state(agent_id, event_vector)
-    print("Updated Emotion:", retrieve_current_emotion(agent_id))
-
-    # 감정 조정 (예: 슬픔이 높다면 조정)
-    adjust_emotions(agent_id)
-    print("Adjusted Emotion:", retrieve_current_emotion(agent_id))
-
-    # 과거 감정 회상
-    past_emotion = recall_past_emotions(agent_id, timeframe_hours=1)
-    print("Past 1-hour Emotion:", past_emotion)
+    # Example database path and agent name
+    database_path = "example_emotion_states.db"
+    agent_name = "agent_1"
+    
+    # Initialize the emotion database
+    init_emotion_db(database_path)
+    
+    # Insert initial emotion state (all emotions set to 0.0)
+    with db_connection(database_path) as conn:
+        cursor = conn.cursor()
+        zero = 0.0
+        cursor.execute("""
+            INSERT INTO emotion_states (agent_name, joy, trust, fear, surprise, sadness, disgust, anger, anticipation)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (agent_name, zero, zero, zero, zero, zero, zero, zero, zero))
+        conn.commit()
+    
+    # Example: Update emotion based on a positive interaction with sentiment_score=0.8
+    update_emotion(database_path, agent_name, 'positive_interaction', 0.8)
+    current = retrieve_current_emotions(database_path, agent_name)
+    print("Current emotions after positive interaction:", current)
+    
+    # Example: Adjust emotions if necessary
+    adjust_emotions(database_path, agent_name)
+    current = retrieve_current_emotions(database_path, agent_name)
+    print("Current emotions after adjustment:", current)
+    
+    # Example: Update emotion based on a negative interaction with sentiment_score=-0.6
+    update_emotion(database_path, agent_name, 'negative_interaction', -0.6)
+    current = retrieve_current_emotions(database_path, agent_name)
+    print("Current emotions after negative interaction:", current)
+    
+    # Adjust emotions again if necessary
+    adjust_emotions(database_path, agent_name)
+    current = retrieve_current_emotions(database_path, agent_name)
+    print("Current emotions after second adjustment:", current)
