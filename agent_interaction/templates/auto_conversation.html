@@ -1,36 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <title>Auto Conversation</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+  <meta charset="UTF-8">
+  <title>Auto Conversation</title>
+  <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
-    <header>
-        <h1>Auto Conversation</h1>
-        <a href="/">Back to Home</a>
-    </header>
+  <header>
+    <h1>Auto Conversation (Scenario-based)</h1>
+    <a href="/">Home</a>
+  </header>
 
-    <section class="chat-container">
-        <!-- 반복문으로 대화 표시 -->
-        {% for item in logs %}
-            <div class="chat-turn">
-                <!-- Turn number -->
-                <div class="turn-info">Turn {{ item.turn }}</div>
+  <section class="scenario-section">
+    <!-- 시나리오 선택 폼 (POST) -->
+    <form method="POST" action="/auto_conversation">
+      <label for="scenario_id">Choose a scenario:</label>
+      <select name="scenario_id" id="scenario_id">
+        {% for sid, data in scenarios.items() %}
+          <option value="{{ sid }}">Scenario {{ sid }} - {{ data['description'] }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Generate Conversation</button>
+    </form>
+  </section>
 
+  <hr/>
+
+  {% if scenario_results %}
+    <div class="scenario-container">
+      {% for scenario in scenario_results %}
+        <div class="scenario-block">
+          <h2>Scenario {{ scenario.scenario_id }}</h2>
+          <p><strong>Description:</strong> {{ scenario.description }}</p>
+          <p><strong>DB Path:</strong> {{ scenario.db_path }}</p>
+
+          <div class="chat-container">
+            {% for log_item in scenario.logs %}
+              <div class="chat-turn">
+                <div class="turn-info">Turn {{ log_item.turn }}</div>
                 <!-- Sender bubble -->
                 <div class="chat-bubble sender">
-                    <div class="agent-name">{{ item.sender }} says:</div>
-                    <div class="bubble-content">{{ item.message }}</div>
+                  <div class="agent-name">{{ log_item.sender }} says:</div>
+                  <div class="bubble-content">{{ log_item.message }}</div>
                 </div>
-
                 <!-- Receiver bubble -->
                 <div class="chat-bubble receiver">
-                    <div class="agent-name">{{ item.receiver }} responds:</div>
-                    <div class="bubble-content">{{ item.response }}</div>
+                  <div class="agent-name">{{ log_item.receiver }} responds:</div>
+                  <div class="bubble-content">{{ log_item.response }}</div>
                 </div>
-            </div>
-        {% endfor %}
-    </section>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>No conversation logs yet. Select a scenario and click "Generate Conversation".</p>
+  {% endif %}
 </body>
 </html>

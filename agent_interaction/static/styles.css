@@ -1,72 +1,70 @@
-/* 기존 스타일 + 간단한 채팅 버블 스타일 */
-
-/* 공통 레이아웃 */
 body {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #fafafa;
+    background: #f9f9f9;
 }
+
 header {
-    background-color: #4CAF50;
-    color: white;
-    padding: 1em;
+    background: #4CAF50;
+    color: #fff;
     text-align: center;
+    padding: 1em;
 }
+
 header a {
-    color: white;
+    color: #fff;
     text-decoration: none;
     margin-left: 1em;
 }
 
-/* 채팅 컨테이너 */
-.chat-container {
+.scenario-section {
     max-width: 800px;
-    margin: 2em auto;
-    background-color: #fff;
+    margin: 1em auto;
     padding: 1em;
-    box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+    background: #fff;
     border-radius: 6px;
 }
 
-/* 하나의 턴(발화+응답) 묶음 */
-.chat-turn {
+.scenario-block {
+    background: #fff;
     margin-bottom: 2em;
     padding: 1em;
-    border-bottom: 1px solid #eee;
+    border-radius: 6px;
+    box-shadow: 0 0 5px rgba(0,0,0,0.1);
 }
 
-/* 턴 정보 */
+.chat-container {
+    padding: 1em;
+    background: #eee;
+    border-radius: 6px;
+}
+
+.chat-turn {
+    margin-bottom: 1em;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 0.5em;
+}
+
 .turn-info {
     font-weight: bold;
-    margin-bottom: 0.5em;
+    margin-bottom: 0.3em;
 }
 
-/* 채팅 말풍선 공통 */
 .chat-bubble {
     border-radius: 10px;
     padding: 0.8em;
     margin: 0.5em 0;
-    max-width: 600px;
-    position: relative;
 }
 
-/* 말풍선 내부 */
+.chat-bubble.sender {
+    background: #fee;
+}
+
+.chat-bubble.receiver {
+    background: #eef;
+}
+
 .agent-name {
     font-weight: bold;
-    margin-bottom: 0.3em;
-}
-.bubble-content {
-    white-space: pre-line;
-}
-
-/* sender 스타일 */
-.chat-bubble.sender {
-    background-color: #ffecd2; /* 연한 주황/베이지 */
-    margin-left: 2em;
-}
-/* receiver 스타일 */
-.chat-bubble.receiver {
-    background-color: #d2f0ff; /* 연한 파랑/하늘색 */
-    margin-left: 2em;
 }

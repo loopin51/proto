@@ -55,6 +55,10 @@ def c_onversation_prompt(agent1_name, agent1_persona, agent2_name, message, memo
         f"Joy, Trust, Fear, Surprise, Sadness, Disgust, Anger, Anticipation.\n"
         f"Each emotion's intensity is expressed as a number between 0 and 1.\n"
         f"{emotion_text}\n\n"
+        f"**Important instruction**:\n"
+        f"- Do not include bracketed notes like (Note: ... ) or meta-commentary describing your emotional process.\n"
+        f"- Do not include stage directions or editorial comments.\n"
+        f"- Write only the direct reasoning (if required) and the final speech in a natural dialogue form.\n\n"
         f"Based on the provided emotional state, memory context, and reflections, "
         f"please respond to {agent1_name}'s message in the following format:\n"
         f"Thought process:\n[Provide your reasoning here, including any considerations from memory, reflections, and emotions.]\n\n"
@@ -75,59 +79,47 @@ def reflection_prompt(agent_name, short_term_memories, long_term_memories, refle
     Returns:
         str: Formatted reflection prompt.
     """
-    if reflection_type == "strategy": #응답 포맷 정형화 필요
+ # 공통 서문: 간결, 교훈적
+    base_prompt = (
+        f"Agent '{agent_name}' is generating a very concise reflection.\n\n"
+        f"Short-term memories:\n" + "\n".join(short_term_memories) + "\n\n"
+        f"Long-term memories:\n" + "\n".join(long_term_memories) + "\n\n"
+        "Please keep the reflection to a few short, direct sentences that capture the key insight or lesson.\n"
+    )
+
+    if reflection_type == "strategy":
+        # 전략은 간단히 앞으로의 방안만
+        # 예: "Generate a short forward strategy in 1-3 bullet points or short sentences."
         return (
-            f"Based on the following memories of agent '{agent_name}':\n\n"
-            f"Short-term memories:\n" + "\n".join(short_term_memories) + "\n\n"
-            f"Long-term memories:\n" + "\n".join(long_term_memories) + "\n\n"
-            f"What is the best course of action for the current situation? Provide a detailed reasoning and action plan."
+            base_prompt +
+            "Type: strategy\n"
+            "Create a concise plan or strategy (1~3 very brief sentences or bullet points) focusing on the next steps."
         )
     elif reflection_type == "lesson":
         return (
-            f"Based on the following memories of agent '{agent_name}':\n\n"
-            f"Short-term memories:\n" + "\n".join(short_term_memories) + "\n\n"
-            f"Long-term memories:\n" + "\n".join(long_term_memories) + "\n\n"
-            f"Summarize the key lessons learned from these experiences."
+            base_prompt +
+            "Type: lesson\n"
+            "Summarize the key lesson learned in no more than 2-3 succinct sentences."
         )
     elif reflection_type == "summary":
         return (
-            f"Based on the following memories of agent '{agent_name}':\n\n"
-            f"Short-term memories:\n" + "\n".join(short_term_memories) + "\n\n"
-            f"Long-term memories:\n" + "\n".join(long_term_memories) + "\n\n"
-            f"Summarize these memories into a concise overview."
+            base_prompt +
+            "Type: summary\n"
+            "Provide a short summary (1~3 sentences) of these memories, capturing the main ideas."
         )
     elif reflection_type == "prediction":
         return (
-            f"Based on the following memories of agent '{agent_name}':\n\n"
-            f"Short-term memories:\n" + "\n".join(short_term_memories) + "\n\n"
-            f"Long-term memories:\n" + "\n".join(long_term_memories) + "\n\n"
-            f"Predict the likely outcomes of taking the current proposed action."
+            base_prompt +
+            "Type: prediction\n"
+            "Predict the likely outcome in 1~2 short sentences, focusing on a concise forecast."
         )
-    else:  # Default to general reflection
+    else:
+        # general reflection
         return (
-            f"Based on the following memories of agent '{agent_name}':\n\n"
-            f"Short-term memories:\n" + "\n".join(short_term_memories) + "\n\n"
-            f"Long-term memories:\n" + "\n".join(long_term_memories) + "\n\n"
-            f"Reflect on these memories and generate a summary or insight."
+            base_prompt +
+            "Type: general\n"
+            "Reflect briefly (1~2 sentences) with a single key insight or takeaway."
         )
-
-def summarize_memory_prompt(content, context):
-    """
-    Generate the prompt for summarizing memory content.
-
-    Args:
-        content (str): The memory content to summarize.
-        context (str): Current conversation context.
-
-    Returns:
-        str: A formatted prompt string.
-    """
-    return (
-        f"Summarize the following memory content based on the given context:\n\n"
-        f"Memory Content:\n{content}\n\n"
-        f"Context:\n{context}\n\n"
-        f"Provide a concise and clear summary."
-    )
 
 def system_prompt():
     """
