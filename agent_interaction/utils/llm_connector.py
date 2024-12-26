@@ -7,6 +7,7 @@ import json
 llm_request_lock = threading.Semaphore(5)
 
 def query_llm_old(prompt, max_retries=5,retry_delay=2):
+def query_llm_old(prompt, max_retries=5,retry_delay=2):
     with llm_request_lock:
         url = "http://127.0.0.1:1234/v1/chat/completions"
         data = {
