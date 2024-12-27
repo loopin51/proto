@@ -66,8 +66,8 @@ scenarios = {
             (2, f"{agent2.name}", "Sure, what's your biggest struggle? I've already submitted mine."),
         ],
         "emotions": {
-            f"{agent1.name}": {"joy": 1.0, "trust": 0.3, "fear": 0.5, "surprise": 0.1, "sadness": 0.2, "disgust": 0.1, "anger": 0.4, "anticipation": 0.2},
-            f"{agent2.name}": {"joy": 1.0, "trust": 0.7, "fear": 0.1, "surprise": 0.2, "sadness": 0.2, "disgust": 0.0, "anger": 0.0, "anticipation": 0.5},
+            f"{agent1.name}": {"joy": 1.0, "trust": 1.0, "fear": 0.5, "surprise": 0.1, "sadness": 0.2, "disgust": 0.1, "anger": 0.4, "anticipation": 0.2},
+            f"{agent2.name}": {"joy": 1.0, "trust": 1.0, "fear": 0.1, "surprise": 0.2, "sadness": 0.2, "disgust": 0.0, "anger": 0.0, "anticipation": 0.5},
         },
     },
     2: {
@@ -85,8 +85,8 @@ scenarios = {
             (2, f"{agent2.name}", "Take a deep breath. Let's figure out a calm approach."),
         ],
         "emotions": {
-            f"{agent1.name}": {"joy": 1.0, "trust": 0.2, "fear": 0.6, "surprise": 0.3, "sadness": 0.2, "disgust": 0.2, "anger": 0.5, "anticipation": 0.3},
-            f"{agent2.name}": {"joy": 1.0, "trust": 0.8, "fear": 0.2, "surprise": 0.1, "sadness": 0.2, "disgust": 0.0, "anger": 0.1, "anticipation": 0.6},
+            f"{agent1.name}": {"joy": 1.0, "trust": 1.0, "fear": 0.6, "surprise": 0.3, "sadness": 0.2, "disgust": 0.2, "anger": 0.5, "anticipation": 0.3},
+            f"{agent2.name}": {"joy": 1.0, "trust": 1.0, "fear": 0.2, "surprise": 0.1, "sadness": 0.2, "disgust": 0.0, "anger": 0.1, "anticipation": 0.6},
         },
     },
     3: {
@@ -104,8 +104,8 @@ scenarios = {
             (2, f"{agent2.name}", "Let me see your slides. We'll polish them together."),
         ],
         "emotions": {
-            f"{agent1.name}": {"joy": 1.0, "trust": 0.4, "fear": 0.7, "surprise": 0.5, "sadness": 0.2, "disgust": 0.2, "anger": 0.3, "anticipation": 0.4},
-            f"{agent2.name}": {"joy": 1.0, "trust": 0.8, "fear": 0.1, "surprise": 0.2, "sadness": 0.2, "disgust": 0.0, "anger": 0.0, "anticipation": 0.8},
+            f"{agent1.name}": {"joy": 1.0, "trust": 1.0, "fear": 0.7, "surprise": 0.5, "sadness": 0.2, "disgust": 0.2, "anger": 0.3, "anticipation": 0.4},
+            f"{agent2.name}": {"joy": 1.0, "trust": 1.0, "fear": 0.1, "surprise": 0.2, "sadness": 0.2, "disgust": 0.0, "anger": 0.0, "anticipation": 0.8},
         },
     },
 }
@@ -115,7 +115,7 @@ scenarios = {
 
 # 폴더명은 현재 시간
 CURRENT_TIME_STR = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-SCENARIO_FOLDER = f"./results/manual_joy10_{CURRENT_TIME_STR}"
+SCENARIO_FOLDER = f"./results/manual_joy1tru1_{CURRENT_TIME_STR}"
 #SCENARIO_FOLDER = f"./results/manual_2024-12-27_053932"
 
 def setup_database(db_path):

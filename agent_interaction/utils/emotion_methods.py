@@ -219,7 +219,7 @@ def adjust_emotions(database_path, agent_name):
             #   = val*(1-alpha) + 0.5*alpha
             new_val = val - (val - 0.5) * alpha
         else:
-            # 0.3 ~ 0.7 사이라면 그대로 둠
+            # 0 ~ 0.7 사이라면 그대로 둠
             new_val = val
 
         new_val = clamp_emotion_value(new_val)

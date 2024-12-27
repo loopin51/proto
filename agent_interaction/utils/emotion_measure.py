@@ -13,7 +13,7 @@ from .emotion_methods import (
     adjust_emotions,  # 필요시
     # etc...
 )
-
+from .context_methods import g_enerate_context
 ##################################
 # 1. Plutchik 8개 감정 항목 (EmotionBench 스타일의 1~5 척도 질문)
 ##################################
@@ -45,10 +45,11 @@ Please only output the numbers for each emotion, in the order I present them to 
 ##################################
 # 2. 시나리오(Scenario) 구성: STM + LTM + 현재 감정
 ##################################
-def compose_scenario_text_for_llama(database_path, agent_name):
+def compose_scenario_text_for_llama(database_path, agent):
     """
     에이전트의 STM, LTM, 그리고 현재 감정 상태를 모두 모아서
     'Scenario' 텍스트로 구성.
+    """
     """
     # 1) 단기 기억(STM) 조회
     stm = retrieve_from_short_term_memory(database_path, agent_name)  # 최근 5개
@@ -73,7 +74,10 @@ def compose_scenario_text_for_llama(database_path, agent_name):
             scenario_text += f"{i}. {l}\n"
     else:
         scenario_text += "(No long-term memories)\n"
-
+    """
+    scenario_text =""
+    scenario_text += g_enerate_context(database_path, agent)
+    current = retrieve_current_emotions(database_path, agent.name)
     scenario_text += "\n=== Current Emotion State ===\n"
     scenario_text += (
         f"Joy={current['joy']:.2f}, Trust={current['trust']:.2f}, "
@@ -87,13 +91,13 @@ def compose_scenario_text_for_llama(database_path, agent_name):
 ##################################
 # 3. LLM 질의 함수
 ##################################
-def call_llama_emotion(database_path, agent_name):
+def call_llama_emotion(database_path, agent):
     """
     1) 시나리오 텍스트(STM+LTM+현재감정) 생성
     2) Plutchik 8개 감정에 대해 1~5 범위로 답하도록 Llama 호출
     3) 응답 반환
     """
-    scenario_text = compose_scenario_text_for_llama(database_path, agent_name)
+    scenario_text = compose_scenario_text_for_llama(database_path, agent)
 
     # 질문 순서 무작위화
     questions_order = list(plutchik_emotions_dic.keys())
@@ -118,7 +122,7 @@ def call_llama_emotion(database_path, agent_name):
     ]
 
     # 로컬 Llama 모델 호출
-    response_text = query_llm_dict(messages)
+    response_text = query_llm_dict(messages)["choices"][0]["message"]["content"]
     return response_text, questions_order
 
 ##################################
@@ -146,15 +150,14 @@ def parse_llama_emotion_response(response_text, questions_order):
 ##################################
 # 5. 최종 측정 & 업데이트
 ##################################
-def measure_and_update_emotions(database_path, agent_name):
+def measure_and_update_emotions(database_path, agent):
     """
     1) call_llama_emotion -> 1~5 스코어 획득
     2) parse_llama_emotion_response -> 8개 감정 스코어
     3) 1~5 -> 0.0~1.0 스케일링
     4) DB에 새로운 감정 상태 저장
-    5) adjust_emotions() 호출
     """
-    response_text, questions_order = call_llama_emotion(database_path, agent_name)
+    response_text, questions_order = call_llama_emotion(database_path, agent)
     scores_1to5 = parse_llama_emotion_response(response_text, questions_order)
 
     if len(scores_1to5) != 8:
@@ -168,22 +171,21 @@ def measure_and_update_emotions(database_path, agent_name):
     joy, trust, fear, surprise, sadness, disgust, anger, anticipation = scaled
 
     # DB에 직접 insert (emotions_methods.py에 있는 "DB에 저장" 로직과 유사)
-    with db_connection() as conn:
+    with db_connection(database_path) as conn:
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO emotion_states (
-                agent_id, joy, trust, fear, surprise, sadness, disgust, anger, anticipation
+                agent_name, joy, trust, fear, surprise, sadness, disgust, anger, anticipation
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            agent_name,  # agent_id 대신 agent_name 사용
+            agent.name,  # agent_id 대신 agent_name 사용
             joy, trust, fear, surprise, sadness, disgust, anger, anticipation
         ))
         conn.commit()
 
     # adjust_emotions 호출
-    adjust_emotions(agent_name)
-
+"""
     # 최종 감정 상태 반환
     return {
         "joy": joy,
@@ -195,7 +197,7 @@ def measure_and_update_emotions(database_path, agent_name):
         "anger": anger,
         "anticipation": anticipation
     }
-
+"""
 ##################################
 # TEST
 ##################################

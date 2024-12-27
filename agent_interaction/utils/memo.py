@@ -1,12 +1,10 @@
 # agent_methods.py
 
 import sqlite3
+
 from .memory_management import (
     add_to_short_term_memory,
     promote_to_long_term_memory,
-    # 기타 필요한 함수들...
-)
-from .memory_management import (
     save_message_to_db,
     save_thought_process_to_db,
     debug_log,
@@ -23,6 +21,7 @@ from .emotion_methods import (
     analyze_sentiment
 )
 from .context_methods import g_enerate_context
+from .emotion_measure import measure_and_update_emotions
 
 def agent_conversation(database_path, agent1, agent2, message, conversation_turn, context=None):
     """
@@ -58,6 +57,7 @@ def agent_conversation(database_path, agent1, agent2, message, conversation_turn
 
         # 감정 업데이트
         update_emotion(database_path, agent2.name, event_type, sentiment_score)
+        measure_and_update_emotions(database_path, agent2)
         # 필요하다면 감정 조정
         adjust_emotions(database_path, agent2.name)
 
@@ -107,6 +107,7 @@ def agent_conversation(database_path, agent1, agent2, message, conversation_turn
 
         # 응답에 대한 감정 업데이트 및 조정
         update_emotion(database_path, agent2.name, resp_event, response_sentiment_score)
+        measure_and_update_emotions(database_path, agent2)
         adjust_emotions(database_path, agent2.name)
 
         # 9) agent2가 말한 내용을 STM에 추가

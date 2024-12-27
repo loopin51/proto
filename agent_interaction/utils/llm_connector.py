@@ -91,38 +91,50 @@ def query_llm(prompt, max_retries=5, retry_delay=2):
     # 비동기 실행
     return asyncio.run(_query_async())
 
-def query_llm_dict(prompt_dict, max_retries=5, retry_delay=2):
+def query_llm_dict(messages, max_retries=5, retry_delay=2):
     """
-    LangChain 기반 LLM 요청 함수. Prompt를 딕셔너리 형태로 받아 처리.
+    LangChain 기반 LLM 요청 함수. OpenAI 스타일의 messages (list[dict])를 입력받아 처리.
     Args:
-        prompt_dict (dict): LLM에 보낼 프롬프트 딕셔너리.
+        messages (list[dict]): 예) [
+          {"role": "system", "content": "..."},
+          {"role": "user", "content": "..."}
+        ]
         max_retries (int): 최대 재시도 횟수.
         retry_delay (int): 재시도 간격(초).
     Returns:
-        dict: LLM의 응답 JSON.
+        dict: LLM의 응답을 OpenAI 호환 JSON 형태로 반환. {"choices": [{"message": {"content": ...}}]}
     """
-    async def _query_async():
-        # messages 리스트 구성
-        messages = prompt_dict.get("messages")
-        if not messages:
-            raise ValueError("Prompt dictionary must contain a 'messages' key with a list of message dictionaries.")
-        
-        # ChatPromptTemplate 구성
-        chat_prompt = ChatPromptTemplate.from_messages([
-            (msg["role"], msg["content"]) for msg in messages
-        ])
-        chain = chat_prompt | llm | StrOutputParser() # 체인 구성
-        
+
+    async def _query_async_dict():
+        # 1) messages 리스트를 LangChain에서 요구하는 (role, content) 튜플 형태로 변환
+        prompt_list = []
+        for msg in messages:
+            role = msg["role"]
+            content = msg["content"]
+            prompt_list.append((role, content))
+
+        # 2) ChatPromptTemplate.from_messages(...)로 PromptTemplate 구성
+        chat_prompt = ChatPromptTemplate.from_messages(prompt_list)
+
+        # 3) 체인 구성 (StrOutputParser는 단순 문자열로 결과를 파싱)
+        chain = chat_prompt | llm | StrOutputParser()
+
+        # 4) 비동기 실행
         for attempt in range(max_retries):
             try:
-                # 체인을 통해 ainvoke 호출
+                # chain.ainvoke에 빈 딕셔너리(또는 필요한 입력) 전달
                 response = await chain.ainvoke({})
-                return {"choices": [{"message": {"content": response}}]}  # JSON 형식으로 응답 포맷팅
+                # OpenAI 호환 JSON 형태로 반환
+                return {
+                    "choices": [
+                        {"message": {"content": response}}
+                    ]
+                }
             except Exception as e:
                 if attempt < max_retries - 1:
                     await asyncio.sleep(retry_delay)
                 else:
                     raise RuntimeError(f"Error querying LLM after {max_retries} attempts: {e}")
 
-    # 비동기 실행
-    return asyncio.run(_query_async())
+    # 5) asyncio.run(...)으로 비동기 함수 실행
+    return asyncio.run(_query_async_dict())
