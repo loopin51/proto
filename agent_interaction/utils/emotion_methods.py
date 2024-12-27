@@ -4,6 +4,7 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
 from textblob import TextBlob
+from .memory_management import debug_log
 
 # 데이터베이스 파일 경로 생성 함수
 def get_emo_database_path():
@@ -130,6 +131,7 @@ def retrieve_current_emotions(database_path, agent_name, recent_n=10):
         rows = cursor.fetchall()
     
     if not rows:
+        debug_log(f"No emotion states found for agent '{agent_name}'")
         return empty_emotion_vector()
     
     avg_emotions = empty_emotion_vector()

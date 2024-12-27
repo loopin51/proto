@@ -293,7 +293,7 @@ def auto_conversation_page():
                 populate_scenario(db_path, scenario_id, agent1.name, agent2.name)
                 
                 conversation_turn = 3
-                message = f"시나리오 {scenario_id} 시작. {scenario_data['description']}"
+                message = f"Let's talk together. {scenario_data['description']}"
                 
                 # 20턴 자동 대화
                 for i in range(20):
@@ -311,7 +311,7 @@ def auto_conversation_page():
                     print(f"{receiver.name}'s Response:\n{response}\n")
                     print(f"Updated conversation turn: {conversation_turn}\n")
                     # Retrieve and print current emotions of the receiver as a demonstration of dramatic change
-                    receiver_emotions = retrieve_current_emotions(DATABASE_PATH, receiver.name)
+                    receiver_emotions = retrieve_current_emotions(db_path, receiver.name)
                     print(f"Current Emotions for {receiver.name}: {receiver_emotions}\n")
                     print("-"*50)
                     message = response
