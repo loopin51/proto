@@ -2,13 +2,14 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>메모리 뷰</title>
+  <title>Memory View</title>
   <link rel="stylesheet" href="/static/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Chart.js 라이브러리 -->
 </head>
 <body>
   <header>
-    <h1>메모리 뷰 (두 에이전트 동시 확인)</h1>
-    <a href="/">홈으로</a>
+    <h1>Memory View</h1>
+    <a href="/">Home</a>
   </header>
 
   <section class="memory-selection">
@@ -29,97 +30,156 @@
   <hr/>
 
   {% if chosen_scenario %}
-    <h2>선택된 시나리오: {{ chosen_scenario }} ({{ scenarios[chosen_scenario].description }})</h2>
+    <h2>선택된 시나리오: {{ scenarios[chosen_scenario].description }}</h2>
   {% endif %}
 
   <div class="memory-container">
+    <!-- Agent1 박스 -->
     <div class="agent-column">
       <h3>Agent1: {{ agent1_name }}</h3>
 
       {% if data_agent1 %}
+        <!-- 단기 메모리 (STM) -->
         <div class="section-block">
           <h4>단기 메모리 (STM)</h4>
-          <ul>
+          <div class="bubble-container">
             {% for stm in data_agent1.short_term_memories %}
-              <li>{{ stm[0] }} (중요도: {{ stm[1] }})</li>
+              <div class="bubble">
+                {{ stm[0] }}
+                <span class="importance">(중요도: {{ stm[1] }})</span>
+              </div>
             {% endfor %}
-          </ul>
+          </div>
         </div>
         
+        <!-- 장기 메모리 (LTM) -->
         <div class="section-block">
           <h4>장기 메모리 (LTM)</h4>
-          <ul>
+          <div class="bubble-container">
             {% for ltm in data_agent1.long_term_memories %}
-              <li>{{ ltm[0] }} (중요도: {{ ltm[1] }}, Reflection: {{ ltm[2] }})</li>
+              <div class="bubble">
+                {{ ltm[0] }}
+                <span class="importance">(중요도: {{ ltm[1] }}, Reflection: {{ ltm[2] }})</span>
+              </div>
             {% endfor %}
-          </ul>
+          </div>
         </div>
 
-        <div class="section-block">
+        <!-- 감정 상태 (Emotion) -->
+        <div class="section-block emotion-block">
           <h4>감정 상태 (Emotion)</h4>
-          <ul>
-            {% for emotion, value in data_agent1.emotions.items() %}
-              <li>{{ emotion }}: {{ value }}</li>
+          <div class="bubble-container">
+            {% for emotion_row in data_agent1.emotions %}
+              {% set emotion_strings = [] %}
+              {% for k, v in emotion_row.items() %}
+                {% if k != 'timestamp' %}
+                  {% set _ = emotion_strings.append(k ~ ': ' ~ '%.2f' % v) %}
+                {% endif %}
+              {% endfor %}
+              <div class="bubble">
+                <strong>{{ emotion_row.timestamp }}</strong>: 
+                {{ emotion_strings | join(', ') }}
+              </div>
             {% endfor %}
-          </ul>
+          </div>
+          <canvas id="agent1-emotion-chart"></canvas> <!-- 그래프 영역 -->
         </div>
 
+        <!-- 사고 과정 (Thought Processes) -->
         <div class="section-block">
           <h4>사고 과정 (Thought Processes)</h4>
-          <ul>
+          <div class="bubble-container">
             {% for thought in data_agent1.thought_processes %}
-              <li>{{ thought }}</li>
+              <div class="bubble">{{ thought }}</div>
             {% endfor %}
-          </ul>
+          </div>
         </div>
+
+        <div class="section-block">
+            <h4>감정 그래프 (Emotion Trends for {{ agent1_name }})</h4>
+            <img src="/emotion_graph/{{ agent1_name }}" 
+                 alt="Emotion Trends for {{ agent1_name }}" 
+                 width="800" 
+                 onerror="this.style.display='none'; document.getElementById('agent1-error').style.display='block';">
+            <p id="agent1-error" style="display:none; color: red;">그래프를 불러오는 데 실패했습니다. 감정 데이터를 확인하세요.</p>
+        </div>
+        
       {% else %}
         <p>Agent1 데이터가 없습니다.</p>
       {% endif %}
     </div>
 
+    <!-- Agent2 박스 -->
     <div class="agent-column">
       <h3>Agent2: {{ agent2_name }}</h3>
 
       {% if data_agent2 %}
+        <!-- 단기 메모리 (STM) -->
         <div class="section-block">
           <h4>단기 메모리 (STM)</h4>
-          <ul>
+          <div class="bubble-container">
             {% for stm in data_agent2.short_term_memories %}
-              <li>{{ stm[0] }} (중요도: {{ stm[1] }})</li>
+              <div class="bubble">
+                {{ stm[0] }}
+                <span class="importance">(중요도: {{ stm[1] }})</span>
+              </div>
             {% endfor %}
-          </ul>
+          </div>
         </div>
         
+        <!-- 장기 메모리 (LTM) -->
         <div class="section-block">
           <h4>장기 메모리 (LTM)</h4>
-          <ul>
+          <div class="bubble-container">
             {% for ltm in data_agent2.long_term_memories %}
-              <li>{{ ltm[0] }} (중요도: {{ ltm[1] }}, Reflection: {{ ltm[2] }})</li>
+              <div class="bubble">
+                {{ ltm[0] }}
+                <span class="importance">(중요도: {{ ltm[1] }}, Reflection: {{ ltm[2] }})</span>
+              </div>
             {% endfor %}
-          </ul>
+          </div>
         </div>
 
-        <div class="section-block">
+        <!-- 감정 상태 (Emotion) -->
+        <div class="section-block emotion-block">
           <h4>감정 상태 (Emotion)</h4>
-          <ul>
-            {% for emotion, value in data_agent2.emotions.items() %}
-              <li>{{ emotion }}: {{ value }}</li>
+          <div class="bubble-container">
+            {% for emotion_row in data_agent2.emotions %}
+              {% set emotion_strings = [] %}
+              {% for k, v in emotion_row.items() %}
+                {% if k != 'timestamp' %}
+                  {% set _ = emotion_strings.append(k ~ ': ' ~ '%.2f' % v) %}
+                {% endif %}
+              {% endfor %}
+              <div class="bubble">
+                <strong>{{ emotion_row.timestamp }}</strong>: 
+                {{ emotion_strings | join(', ') }}
+              </div>
             {% endfor %}
-          </ul>
+          </div>
+          <canvas id="agent2-emotion-chart"></canvas> <!-- 그래프 영역 -->
         </div>
 
+        <!-- 사고 과정 (Thought Processes) -->
         <div class="section-block">
           <h4>사고 과정 (Thought Processes)</h4>
-          <ul>
+          <div class="bubble-container">
             {% for thought in data_agent2.thought_processes %}
-              <li>{{ thought }}</li>
+              <div class="bubble">{{ thought }}</div>
             {% endfor %}
-          </ul>
+          </div>
+        </div>
+
+        <div class="section-block">
+            <h4>감정 그래프 (Emotion Trends for {{ agent2_name }})</h4>
+            <img src="/emotion_graph/{{ agent2_name }}" 
+                 alt="Emotion Trends for {{ agent2_name }}" 
+                 width="800" 
+                 onerror="this.style.display='none'; document.getElementById('agent2-error').style.display='block';">
+            <p id="agent2-error" style="display:none; color: red;">그래프를 불러오는 데 실패했습니다. 감정 데이터를 확인하세요.</p>
         </div>
       {% else %}
         <p>Agent2 데이터가 없습니다.</p>
       {% endif %}
     </div>
   </div>
-</body>
-</html>

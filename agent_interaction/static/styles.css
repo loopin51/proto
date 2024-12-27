@@ -176,37 +176,106 @@ footer {
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
-.agent-column {
-    width: 50%;
-    padding: 1em;
-    background: #fff;
-    box-sizing: border-box;
-}
-
 .memory-container {
-    display: flex;  /* 2등분 */
-    flex-direction: row;
+    display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     max-width: 1200px;
     margin: 2em auto;
-    background: #fff;
+    gap: 1em;
+}
+button{
+    padding: 0.7em;
+    background: #4CAF50;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
 }
 
+button:hover{
+    background: #45a049;
+}
+.agent-column {
+    flex: 0 0 48%;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 1em;
+    box-sizing: border-box;
+}
+
+/* 제목 스타일 */
 .agent-column h3 {
     margin-top: 0;
     border-bottom: 2px solid #ccc;
     padding-bottom: 0.5em;
 }
 
+/* 각 섹션 블록 */
 .section-block {
-    margin-bottom: 1.5em;
+    margin-bottom: 1em;
+    padding: 0.5em;
+    background: #fafafa;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    max-height: 200px;  /* 고정 높이 */
+    overflow-y: auto;   /* 세로 스크롤 */
 }
 
-.section-block h4 {
-    margin-bottom: 0.5em;
+/* 버블 컨테이너 */
+.bubble-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
 }
 
-.section-block ul {
-    list-style-type: disc;
-    margin-left: 1.5em;
+/* 버블 스타일 */
+.bubble {
+    padding: 0.8em 1em;
+    background: #e1f5fe;
+    border: 1px solid #81d4fa;
+    border-radius: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    word-wrap: break-word;
+    position: relative;
+}
+
+/* 중요도 스타일 */
+.importance {
+    font-size: 0.8em;
+    color: #555;
+    margin-left: 0.5em;
+}
+
+/* 감정 그래프 캔버스 */
+.emotion-block canvas {
+    max-width: 100%;
+    height: 200px;
+    margin-top: 1em;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .agent-column {
+        flex: 0 0 100%;
+    }
+}
+
+.section-block img {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    max-width: 100%;
+    height: auto;
+    margin-bottom: 20px;
+}
+
+p {
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+p#agent1-error, p#agent2-error {
+    color: red;
+    font-weight: bold;
 }

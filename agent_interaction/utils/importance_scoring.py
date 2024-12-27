@@ -1,8 +1,8 @@
 from datetime import datetime
 from textblob import TextBlob
 from sentence_transformers import SentenceTransformer, util
-from utils.prompt_templates import *
-from utils.context_methods import *
+from .prompt_templates import *
+from .context_methods import *
 
 model = SentenceTransformer('all-MiniLM-L6-v2') #model used for context similarity calculation
 
