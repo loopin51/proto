@@ -140,7 +140,7 @@ def add_to_short_term_memory(database_path, event, context):
 
     recency = 0  # Placeholder: Add logic to calculate recency based on timestamp.
 
-    sentiment = analyze_sentiment(summarized_content)  # Example: Sentiment analysis
+    sentiment = analyze_sentiment(event['content'])  # Example: Sentiment analysis
     importance = calculate_importance(summarized_content, context, recency, frequency, sentiment)
 
     # Insert summarized memory into short-term memory
