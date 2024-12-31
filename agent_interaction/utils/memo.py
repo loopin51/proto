@@ -59,7 +59,7 @@ def agent_conversation(database_path, agent1, agent2, message, conversation_turn
         update_emotion(database_path, agent2.name, event_type, sentiment_score)
         measure_and_update_emotions(database_path, agent2)
         # 필요하다면 감정 조정
-        adjust_emotions(database_path, agent2.name)
+        #adjust_emotions(database_path, agent2.name)
 
         # 3) agent2의 현재 감정 상태 조회
         current_emotions = retrieve_current_emotions(database_path, agent2.name)
@@ -108,7 +108,7 @@ def agent_conversation(database_path, agent1, agent2, message, conversation_turn
         # 응답에 대한 감정 업데이트 및 조정
         update_emotion(database_path, agent2.name, resp_event, response_sentiment_score)
         measure_and_update_emotions(database_path, agent2)
-        adjust_emotions(database_path, agent2.name)
+        #adjust_emotions(database_path, agent2.name)
 
         # 9) agent2가 말한 내용을 STM에 추가
         add_to_short_term_memory(

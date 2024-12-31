@@ -395,7 +395,7 @@ def update_memory_importance(database_path, context):
         cursor.execute('SELECT id, content, importance, timestamp FROM short_term_memory')
         stm_memories = cursor.fetchall()
 
-        cursor.execute('SELECT id, content, importance, last_accessed FROM long_term_memory')
+        cursor.execute('SELECT id, content, importance, last_accessed FROM long_term_memory WHERE reflection_type IS NULL') #회상은 중요도 변하면 안됨
         ltm_memories = cursor.fetchall()
 
         # Update STM memories
