@@ -25,6 +25,7 @@ def calculate_importance(content, context, recency, frequency, sentiment):
     recency_score = max(0, 10 - recency // 10)  # Example: scale recency to 0-10
     frequency_score = min(10, frequency * 2)  # Example: scale frequency to 0-10
     sentiment_score = max(0, min(10, (sentiment + 1) * 5))  # Scale sentiment to 0-10
+    sentiment_score = max(0, min(10, abs(sentiment) * 10)) #감정도는 절댓값으로 계산
 
     return int(w1 * relevance + w2 * recency_score + w3 * frequency_score + w4 * sentiment_score)
 
