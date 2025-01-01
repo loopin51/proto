@@ -225,3 +225,147 @@ def agent_conversation(database_path, agent1, agent2, message, conversation_turn
         save_message_to_db(database_path, conversation_turn, "Error", str(e))
         conversation_turn += 1
         raise
+
+import pandas as pd
+
+def load_scenarios_from_excel(excel_path):
+    """
+    엑셀 파일에서 여러 시트를 읽어와, 시나리오 딕셔너리를 구성해 반환.
+
+    시트 예:
+      - scenario_list: columns=[scenario_id, description]
+      - stm: columns=[scenario_id, agent_name, content, importance]
+      - ltm: columns=[scenario_id, agent_name, content, importance, reflection_type]
+      - conversations: columns=[scenario_id, turn, speaker, message]
+      - emotions: columns=[scenario_id, agent_name, joy, trust, fear, surprise, sadness, disgust, anger, anticipation]
+
+    Returns:
+        dict: {
+            scenario_id: {
+                "description": str,
+                "stm": [(agent_name, content, importance), ...],
+                "ltm": [(agent_name, content, importance, reflection_type), ...],
+                "conversations": [(turn, speaker, message), ...],
+                "emotions": {
+                    agent_name: {
+                        "joy": float, "trust": float, ...
+                    }, ...
+                }
+            },
+            ...
+        }
+    """
+
+    # 1) 각 시트를 DataFrame으로 읽어옴
+    df_scenario_list = pd.read_excel(excel_path, sheet_name="scenario_list")
+    df_stm = pd.read_excel(excel_path, sheet_name="stm")
+    df_ltm = pd.read_excel(excel_path, sheet_name="ltm")
+    df_conv = pd.read_excel(excel_path, sheet_name="conversations")
+    df_emo = pd.read_excel(excel_path, sheet_name="emotions")
+
+    # 2) 시나리오 딕셔너리 골격
+    scenarios_dict = {}
+
+    # 2-A) 시나리오 리스트
+    for _, row in df_scenario_list.iterrows():
+        sid = int(row["scenario_id"])
+        desc = row["description"]
+        scenarios_dict[sid] = {
+            "description": desc,
+            "stm": [],
+            "ltm": [],
+            "conversations": [],
+            "emotions": {}
+        }
+
+    # 2-B) STM
+    for _, row in df_stm.iterrows():
+        sid = int(row["scenario_id"])
+        agent_name = row["agent_name"]
+        content = row["content"]
+        importance = float(row["importance"])
+        if sid not in scenarios_dict:
+            # 시나리오가 scenario_list에 없을 수도 있으니
+            scenarios_dict[sid] = {
+                "description": "",
+                "stm": [],
+                "ltm": [],
+                "conversations": [],
+                "emotions": {}
+            }
+        scenarios_dict[sid]["stm"].append((agent_name, content, importance))
+
+    # 2-C) LTM
+    for _, row in df_ltm.iterrows():
+        sid = int(row["scenario_id"])
+        agent_name = row["agent_name"]
+        content = row["content"]
+        importance = float(row["importance"])
+        reflection_type = row.get("reflection_type", None)
+        if sid not in scenarios_dict:
+            scenarios_dict[sid] = {
+                "description": "",
+                "stm": [],
+                "ltm": [],
+                "conversations": [],
+                "emotions": {}
+            }
+        scenarios_dict[sid]["ltm"].append(
+            (agent_name, content, importance, reflection_type)
+        )
+
+    # 2-D) Conversations
+    for _, row in df_conv.iterrows():
+        sid = int(row["scenario_id"])
+        turn = int(row["turn"])
+        speaker = row["speaker"]
+        message = row["message"]
+        if sid not in scenarios_dict:
+            scenarios_dict[sid] = {
+                "description": "",
+                "stm": [],
+                "ltm": [],
+                "conversations": [],
+                "emotions": {}
+            }
+        scenarios_dict[sid]["conversations"].append(
+            (turn, speaker, message)
+        )
+
+    # 2-E) Emotions
+    # agent_name, joy, trust, fear, surprise, sadness, disgust, anger, anticipation
+    for _, row in df_emo.iterrows():
+        sid = int(row["scenario_id"])
+        agent_name = row["agent_name"]
+        joy = float(row["joy"])
+        trust = float(row["trust"])
+        fear = float(row["fear"])
+        surprise = float(row["surprise"])
+        sadness = float(row["sadness"])
+        disgust = float(row["disgust"])
+        anger = float(row["anger"])
+        anticipation = float(row["anticipation"])
+
+        if sid not in scenarios_dict:
+            scenarios_dict[sid] = {
+                "description": "",
+                "stm": [],
+                "ltm": [],
+                "conversations": [],
+                "emotions": {}
+            }
+        if agent_name not in scenarios_dict[sid]["emotions"]:
+            scenarios_dict[sid]["emotions"][agent_name] = {}
+
+        scenarios_dict[sid]["emotions"][agent_name] = {
+            "joy": joy,
+            "trust": trust,
+            "fear": fear,
+            "surprise": surprise,
+            "sadness": sadness,
+            "disgust": disgust,
+            "anger": anger,
+            "anticipation": anticipation
+        }
+
+    return scenarios_dict

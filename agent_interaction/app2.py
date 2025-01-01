@@ -3,6 +3,7 @@ from utils.memo import agent_conversation
 from utils.memory_management import manage_memories
 from utils.emotion_methods import retrieve_current_emotions
 from agents.agent import Agent
+from utils.general_methods import load_scenarios_from_excel
 
 import threading
 import os
@@ -15,6 +16,9 @@ import matplotlib.pyplot as plt
 app = Flask(__name__)
 
 DATABASE_PATH = "test_agents.db"
+
+current_db_path = None
+current_scenario_id = None
 
 # 시나리오별로 DB에 삽입할 초기 데이터 정의
 # (시나리오 번호 => dict 형태)
@@ -111,6 +115,16 @@ scenarios = {
         },
     },
 }
+
+excel_path = "scenarios.xlsx"
+scenarios = load_scenarios_from_excel(excel_path)
+
+for sid, data in scenarios.items():
+    print(f"Scenario ID: {sid}, Description: {data['description']}")
+    print("STM:", data["stm"])
+    print("LTM:", data["ltm"])
+    print("Conversations:", data["conversations"])
+    print("Emotions:", data["emotions"])
 
 # 폴더명은 현재 시간
 CURRENT_TIME_STR = datetime.now().strftime("%Y-%m-%d_%H%M%S")
@@ -238,9 +252,10 @@ def populate_scenario(db_path, scenario_id, agent1, agent2):
 def manage_agent_memories():
     while True:
         # Adjust memories and promote to long-term for agent1 and agent2
-        manage_memories(DATABASE_PATH, agent1.name)
-        manage_memories(DATABASE_PATH, agent2.name)
-        time.sleep(10)  # Run every 60 seconds
+        if current_db_path and os.path.exists(current_db_path):
+            manage_memories(current_db_path, agent1.name)
+            manage_memories(current_db_path, agent2.name)
+        time.sleep(10)  # 30초마다 실행
 
 #threading.Thread(target=manage_agent_memories, daemon=True).start()
 #이거 각 시나리오 바뀔때마다 어떻게 처리할지 생각해보기
@@ -275,6 +290,7 @@ def auto_conversation_page():
     else:
         # POST: 시나리오 선택 후 대화 생성 또는 로드
         try:
+            global current_scenario_id, current_db_path
             scenario_id = int(request.form.get('scenario_id'))
             scenario_data = scenarios.get(scenario_id)
             if not scenario_data:
@@ -283,6 +299,8 @@ def auto_conversation_page():
             db_path = os.path.join(SCENARIO_FOLDER, f"scenario_{scenario_id}.db")
             db_filename = f"scenario_{scenario_id}.db"
             
+            current_scenario_id = scenario_id
+            current_db_path = db_path
             # scenario_logs 초기화
             scenario_logs = []
             chosen_scenario = scenario_id
@@ -633,7 +651,7 @@ def emotion_graph(agent_name):
     Generate a graph of emotion trends for the given agent and return as PNG.
     """
     try:
-        conn = sqlite3.connect(DATABASE_PATH)
+        conn = sqlite3.connect(DATABASE_PATH) # DB 경로 수정
         cursor = conn.cursor()
 
         # 감정 데이터 가져오기
